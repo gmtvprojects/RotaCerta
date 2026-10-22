@@ -91,7 +91,9 @@ export interface Notification {
   orderId: number;
   name: string;
   phone: string;
-  status: 'delivered' | 'failed' | 'skipped';
+  status: 'queued' | 'delivered' | 'failed' | 'skipped';
+  /** Evita avisos duplicados para a mesma parada: `rota:pedido:next`. */
+  key?: string;
   event: 'rota_iniciada' | 'entrega_concluida';
   created: string;
   message: string;

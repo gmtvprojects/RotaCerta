@@ -33,9 +33,11 @@ export const availableManifests = (d: Dataset, driverId: number): Route[] =>
 function queueNotice(d: Dataset, r: Route, event: Notification['event'], time: string): Dataset {
   const target = nextStop(d, r);
   if (!target) return d;
+  const key = `${r.id}:${target.id}:next`;
+  if (d.notifications.some((n) => n.key === key)) return d;
   const skipped = !target.consent;
   const n: Notification = {
-    id: `n${Date.now().toString(36)}-${target.id}`, routeId: r.id, orderId: target.id, name: target.name, phone: target.phone,
+    id: `n${Date.now().toString(36)}-${target.id}`, key, routeId: r.id, orderId: target.id, name: target.name, phone: target.phone,
     status: skipped ? 'skipped' : 'delivered', event, created: time, message: noticeMessage(target.name),
     reason: skipped ? 'Cliente sem autorização para mensagem.' : '',
   };

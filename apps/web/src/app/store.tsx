@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ROLE_LABELS, closeStop, confirmOrder, createSeed, releaseTrip, setChecks, startTrip, syncSignatures, volumesOf, type StopOutcome, type BoxInput, type Dataset, type DeliveryForm, type Order, type PaperForm, type PaperValues, type PlanDraft, type Role, type Route } from '@rotacerta/domain';
+import { ROLE_LABELS, retryNotice, settleNotice, type TripResult, closeStop, confirmOrder, createSeed, releaseTrip, setChecks, startTrip, syncSignatures, volumesOf, type StopOutcome, type BoxInput, type Dataset, type DeliveryForm, type Order, type PaperForm, type PaperValues, type PlanDraft, type Role, type Route } from '@rotacerta/domain';
 
 const KEY = 'rotacerta:v2';
 
@@ -44,6 +44,10 @@ interface Store extends Persisted {
   /** Desfaz uma carga em conferência e devolve as entregas à fila. */
   discardRoute: (routeId: number) => void;
   setDriver: (driverId: number) => void;
+  /** Aplica uma alteração de configuração da loja; devolve o erro de validação, ou null. */
+  change: (fn: (d: Dataset) => TripResult) => string | null;
+  /** Reenvia um aviso com falha (simulado); devolve o erro, ou null. */
+  retryNotice: (id: string) => string | null;
   /** Inicia a viagem; devolve a mensagem de bloqueio, ou null se deu certo. */
   startRoute: (routeId: number) => string | null;
   /** Conclui ou registra ocorrência na parada atual; devolve o bloqueio, ou null. */
@@ -193,6 +197,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : o),
       };
     }),
+    change: (fn) => {
+      const r = fn(state.data);
+      if (r.ok) setState((s) => ({ ...s, data: r.data }));
+      return r.ok ? null : r.error;
+    },
+    retryNotice: (id) => {
+      const r = retryNotice(state.data, id, now());
+      if (!r.ok) return r.error;
+      setState((s) => ({ ...s, data: r.data }));
+      setTimeout(() => patch((d) => settleNotice(d, id)), 650);
+      return null;
+    },
     setDriver: (driverId) => setState((s) => ({ ...s, driverId })),
     startRoute: (routeId) => {
       const r = startTrip(state.data, routeId, state.driverId, now());
