@@ -11,13 +11,15 @@ import { Motorista } from '../pages/Motorista';
 import { Notificacoes } from '../pages/Notificacoes';
 import { Configuracoes } from '../pages/Configuracoes';
 import { Placeholder } from '../pages/Placeholder';
+import { Atendimento } from '../pages/Atendimento';
+import { Pendencias } from '../pages/Pendencias';
 
 interface PageDef { page: Page; path: string; label: string; element: JSX.Element }
 
 const PAGES: PageDef[] = [
   { page: 'dashboard', path: '/gestao', label: 'Painel de gestão', element: <Dashboard /> },
-  { page: 'atendimento', path: '/atendimento', label: 'Atendimento', element: <Placeholder title="Atendimento" note="Nova entrega em duas etapas, identificação de caixas e ficha de papel." /> },
-  { page: 'pendencias', path: '/pendencias', label: 'Continuar atendimento', element: <Placeholder title="Continuar atendimento" note="Rascunhos, fichas para revisar e compras aguardando caixas." /> },
+  { page: 'atendimento', path: '/atendimento', label: 'Atendimento', element: <Atendimento /> },
+  { page: 'pendencias', path: '/pendencias', label: 'Continuar atendimento', element: <Pendencias /> },
   { page: 'entregas', path: '/entregas', label: 'Entregas', element: <Entregas /> },
   { page: 'volumes', path: '/volumes', label: 'Volumes e caixas', element: <Volumes /> },
   { page: 'expedicao', path: '/expedicao', label: 'Montar carga', element: <Expedicao /> },
@@ -38,7 +40,7 @@ export function App() {
   if (!role) return <Login />;
 
   const menu = menuFor(role);
-  const current = PAGES.find((p) => p.path === pathname);
+  const current = PAGES.find((p) => pathname === p.path || pathname.startsWith(`${p.path}/`));
   if (pathname === '/' || pathname === '/login') return <Navigate to={homePath(role)} replace />;
   if (current && !ALLOWED_PAGES[role].includes(current.page)) return <Navigate to={homePath(role)} replace />;
 
@@ -58,7 +60,7 @@ export function App() {
       </aside>
       <main className="main">
         <Routes>
-          {menu.map((m) => <Route key={m.path} path={m.path} element={m.element} />)}
+          {menu.map((m) => <Route key={m.path} path={`${m.path}/*`} element={m.element} />)}
           <Route path="*" element={<Navigate to={homePath(role)} replace />} />
         </Routes>
       </main>

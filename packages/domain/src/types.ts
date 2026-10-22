@@ -81,3 +81,35 @@ export interface Dataset {
   notifications: Notification[];
   departures: string[];
 }
+
+/** Dados do cliente/endereço digitados na etapa 1 do atendimento. */
+export interface DeliveryForm {
+  clientId: number | null;
+  name: string;
+  phone: string;
+  neighborhood: string;
+  street: string;
+  number: string;
+  complement: string;
+  reference: string;
+  window: string;
+  notes: string;
+  consent: boolean;
+}
+
+export interface BoxInput { code: string; type: BoxType; location: string }
+
+export const EMPTY_DELIVERY_FORM: DeliveryForm = {
+  clientId: null, name: '', phone: '', neighborhood: '', street: '', number: '',
+  complement: '', reference: '', window: '14:00–16:00', notes: '', consent: true,
+};
+
+export const DELIVERY_WINDOWS = ['10:00–12:00', '14:00–16:00', '16:00–18:00'] as const;
+
+export const DEFAULT_BOX_LOCATION: Record<BoxType, string> = {
+  ambient: 'Área de expedição',
+  cold: 'Câmara fria 01 · Prateleira B',
+  frozen: 'Câmara de congelados · Setor A',
+};
+
+export const BOX_TYPE_LABELS: Record<BoxType, string> = { ambient: 'Ambiente', cold: 'Frio', frozen: 'Congelado' };
