@@ -11,7 +11,7 @@ export function Expedicao() {
   const [vehicleId, setVehicleId] = useState<number>(0);
   const [departure, setDeparture] = useState(data.departures[0] ?? '');
 
-  const busy = new Set(data.routes.filter((r) => r.status === 'active' || r.status === 'released').map((r) => r.vehicleId));
+  const busy = new Set(data.routes.filter((r) => r.status !== 'finished').map((r) => r.vehicleId));
   const freeVehicles = data.vehicles.filter((v) => !busy.has(v.id));
   const zoneOf = (n: string) => data.neighborhoods.find((x) => x.name === n)?.zone ?? 'Sem região';
   const ready = data.orders.filter((o) => o.status === 'ready' && o.boxes.length > 0 && (!zone || zoneOf(o.neighborhood) === zone));
@@ -22,7 +22,7 @@ export function Expedicao() {
     if (!selected.length || !vehicle) return;
     createRoute(selected, vehicle, departure);
     setSelected([]);
-    navigate('/romaneios');
+    navigate('/carregamento');
   };
 
   return (
@@ -60,7 +60,7 @@ export function Expedicao() {
             </select>
           </label>
           <button type="button" className="primary" disabled={!selected.length || !vehicle} onClick={generate}>
-            Gerar romaneio ({selected.length})
+            Montar carga para conferência ({selected.length})
           </button>
         </div>
       </section>

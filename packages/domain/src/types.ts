@@ -55,6 +55,22 @@ export interface Route {
   status: RouteStatus;
   departure: string;
   created: string;
+  /** Volumes conferidos no carregamento, por chave `${orderId}:${volume}`. */
+  checked?: Record<string, boolean>;
+}
+
+/** Um volume físico a conferir: caixa ou item fora das caixas. */
+export interface Volume { key: string; orderId: number; label: string; type: BoxType | 'extra'; location: string }
+
+export function volumesOf(o: Order): Volume[] {
+  const boxes = o.boxes.map((code): Volume => {
+    const info = o.boxDetails?.[code];
+    return { key: `${o.id}:${code}`, orderId: o.id, label: code, type: info?.type ?? 'ambient', location: info?.location ?? DEFAULT_BOX_LOCATION.ambient };
+  });
+  const extras = Array.from({ length: o.gas }, (_, i): Volume => ({
+    key: `${o.id}:extra-${i + 1}`, orderId: o.id, label: o.gas > 1 ? `Item fora da caixa ${i + 1}` : 'Item fora da caixa (gás)', type: 'extra', location: 'Área de expedição',
+  }));
+  return [...boxes, ...extras];
 }
 
 export interface Notification {

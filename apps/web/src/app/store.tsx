@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { createSeed, type BoxInput, type Dataset, type DeliveryForm, type Order, type Role, type Route } from '@rotacerta/domain';
+import { createSeed, volumesOf, type BoxInput, type Dataset, type DeliveryForm, type Order, type Role, type Route } from '@rotacerta/domain';
 
 const KEY = 'rotacerta:v1';
 
@@ -26,6 +26,12 @@ interface Store extends Persisted {
   /** Grava as caixas; sem caixas a entrega segue aguardando volumes. */
   saveBoxes: (orderId: number, boxes: BoxInput[], gas: number) => void;
   createRoute: (orderIds: number[], vehicleId: number, departure: string) => number;
+  /** Marca ou desmarca volumes na conferência do carregamento. */
+  setChecked: (routeId: number, keys: string[], value: boolean) => void;
+  /** Libera o romaneio ao motorista; só vale com todos os volumes conferidos. */
+  releaseRoute: (routeId: number) => void;
+  /** Desfaz uma carga em conferência e devolve as entregas à fila. */
+  discardRoute: (routeId: number) => void;
   startRoute: (routeId: number) => void;
   completeDelivery: (orderId: number) => void;
   failDelivery: (orderId: number) => void;
@@ -98,17 +104,51 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       let id = 0;
       patch((d) => {
         id = Math.max(1000, ...d.routes.map((r) => r.id)) + 1;
-        const route: Route = { id, vehicleId, driverId: null, orders: orderIds, status: 'released', departure: departure || 'A definir', created: now() };
+        const route: Route = { id, vehicleId, driverId: null, orders: orderIds, status: 'loading', departure: departure || 'A definir', created: now(), checked: {} };
         return {
           ...d,
           routes: [...d.routes, route],
           orders: d.orders.map((o) => orderIds.includes(o.id)
-            ? { ...o, status: 'released', routeId: id, history: [...o.history, { label: `Romaneio #${id} liberado`, time: now(), actor: 'Expedição' }] }
+            ? { ...o, status: 'loading', routeId: id, history: [...o.history, { label: `Romaneio #${id} em conferência`, time: now(), actor: 'Expedição' }] }
             : o),
         };
       });
       return id;
     },
+    setChecked: (routeId, keys, value) => patch((d) => ({
+      ...d,
+      routes: d.routes.map((r) => {
+        if (r.id !== routeId || r.status !== 'loading') return r;
+        const checked = { ...(r.checked ?? {}) };
+        keys.forEach((k) => { if (value) checked[k] = true; else delete checked[k]; });
+        return { ...r, checked };
+      }),
+    })),
+    releaseRoute: (routeId) => patch((d) => {
+      const r = d.routes.find((x) => x.id === routeId);
+      if (!r || r.status !== 'loading') return d;
+      const orders = r.orders.map((id) => d.orders.find((o) => o.id === id)).filter((o): o is Order => !!o);
+      if (orders.some((o) => o.routeId !== r.id || o.status !== 'loading')) return d;
+      if (!orders.flatMap(volumesOf).every((v) => r.checked?.[v.key])) return d;
+      return {
+        ...d,
+        routes: d.routes.map((x) => (x.id === routeId ? { ...x, status: 'released' } : x)),
+        orders: d.orders.map((o) => r.orders.includes(o.id)
+          ? { ...o, status: 'released', history: [...o.history, { label: `Volumes conferidos. Romaneio #${r.id} disponível para o motorista`, time: now(), actor: 'Expedição' }] }
+          : o),
+      };
+    }),
+    discardRoute: (routeId) => patch((d) => {
+      const r = d.routes.find((x) => x.id === routeId);
+      if (!r || r.status !== 'loading') return d;
+      return {
+        ...d,
+        routes: d.routes.filter((x) => x.id !== routeId),
+        orders: d.orders.map((o) => r.orders.includes(o.id)
+          ? { ...o, status: 'ready', routeId: null, history: [...o.history, { label: `Carga #${r.id} desfeita`, time: now(), actor: 'Expedição' }] }
+          : o),
+      };
+    }),
     startRoute: (routeId) => setState((s) => ({
       ...s,
       data: {

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useStore } from '../app/store';
 import { Empty, Header, OrderPill, RoutePill } from './ui';
 
@@ -15,6 +16,7 @@ export function Romaneios() {
             <div className="card-head">
               <h2>Romaneio #{r.id}</h2><RoutePill status={r.status} />
               <span className="muted">{vehicle?.name} · saída {r.departure} · {driver?.name ?? 'sem motorista'}</span>
+              {r.status === 'loading' && <Link className="btn primary" to="/carregamento">Conferir carga</Link>}
               <button type="button" onClick={() => window.print()}>Imprimir</button>
             </div>
             <ol className="stops">

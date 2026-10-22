@@ -10,9 +10,9 @@ import { Romaneios } from '../pages/Romaneios';
 import { Motorista } from '../pages/Motorista';
 import { Notificacoes } from '../pages/Notificacoes';
 import { Configuracoes } from '../pages/Configuracoes';
-import { Placeholder } from '../pages/Placeholder';
 import { Atendimento } from '../pages/Atendimento';
 import { Pendencias } from '../pages/Pendencias';
+import { Carregamento } from '../pages/Carregamento';
 
 interface PageDef { page: Page; path: string; label: string; element: JSX.Element }
 
@@ -23,7 +23,7 @@ const PAGES: PageDef[] = [
   { page: 'entregas', path: '/entregas', label: 'Entregas', element: <Entregas /> },
   { page: 'volumes', path: '/volumes', label: 'Volumes e caixas', element: <Volumes /> },
   { page: 'expedicao', path: '/expedicao', label: 'Montar carga', element: <Expedicao /> },
-  { page: 'carregamento', path: '/carregamento', label: 'Carregamento', element: <Placeholder title="Carregamento" note="Conferência física das caixas antes de liberar o romaneio." /> },
+  { page: 'carregamento', path: '/carregamento', label: 'Carregamento', element: <Carregamento /> },
   { page: 'romaneio', path: '/romaneios', label: 'Romaneios', element: <Romaneios /> },
   { page: 'motorista', path: '/motorista', label: 'Motorista', element: <Motorista /> },
   { page: 'notificacoes', path: '/notificacoes', label: 'Notificações', element: <Notificacoes /> },
