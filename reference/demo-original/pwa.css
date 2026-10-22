@@ -1,0 +1,33 @@
+/* Installation layer only. The v12 RotaCerta design tokens and workspaces stay intact. */
+[hidden]{display:none!important}
+.rc-pwa-login-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
+.rc-pwa-login-tools .textbtn{min-height:44px;display:inline-flex;align-items:center;gap:7px;font-size:12px}
+.rc-pwa-login-tools .rc-pwa-about{width:44px;justify-content:center;color:var(--muted)}
+.rc-pwa-profile{padding:20px;margin-top:20px}
+.rc-pwa-profile-head{display:flex;align-items:center;gap:12px}
+.rc-pwa-profile-head h2{font-size:16px;margin-bottom:5px}
+.rc-pwa-profile-head p{font-size:11px;line-height:1.6}
+.rc-pwa-mark{width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:var(--blue-soft);color:var(--blue);border-radius:11px;flex-shrink:0}
+.rc-pwa-buttons{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}
+.rc-pwa-buttons .btn{min-height:44px}
+.rc-pwa-local-note{font-size:11px;line-height:1.7;color:var(--muted);margin-top:12px}
+.rc-pwa-info{font-size:13px;line-height:1.8;color:var(--muted)}
+.rc-pwa-info p+p{margin-top:13px}
+.rc-pwa-info strong{color:var(--ink)}
+.rc-pwa-info ol{padding-left:23px;margin:14px 0}
+.rc-pwa-info li{padding:3px 0}
+.rc-pwa-info .pill{white-space:normal}
+html[data-pwa-standalone="true"] .rc-pwa-install{display:none!important}
+html[data-pwa-standalone="true"] .rc-pwa-login-tools{justify-content:flex-end}
+html[data-pwa-update-available="false"] [data-pwa-update]{display:none!important}
+@media(display-mode:standalone){
+ .rc-pwa-install{display:none!important}
+ .rc-pwa-login-tools{justify-content:flex-end}
+}
+@media(max-width:760px){
+ .rc-pwa-profile{padding:17px}
+ .rc-pwa-buttons>.btn{flex:1;min-width:130px}
+ html[data-pwa-standalone="true"] .rc-auth-story{padding-top:calc(16px + env(safe-area-inset-top))}
+ html[data-pwa-standalone="true"] .topbar{height:calc(65px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top)}
+}
+@media print{.rc-pwa-login-tools,.rc-pwa-profile{display:none!important}}
