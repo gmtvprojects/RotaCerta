@@ -15,9 +15,8 @@ Detalhes em [docs/funcionalidades.md](docs/funcionalidades.md).
 
 ## Estrutura (monorepo)
 ```
-apps/mobile        app do motorista (Expo / React Native) — a criar
-apps/web           painel de gestão, atendimento e expedição — a criar
-packages/domain    papéis, permissões e status compartilhados
+apps/web           app web (Vite + React + TS): todos os perfis, dados fixos por enquanto
+packages/domain    tipos, papéis, permissões, status e dados fixos (seed)
 reference/         demo original (somente referência, não faz parte do build)
 docs/              documentação
 ```
@@ -35,6 +34,7 @@ Fluxo: `feature/*` → `dev` → `hml` → `prod`, sempre por Pull Request.
 ```bash
 pnpm install
 pnpm typecheck
+pnpm --filter @rotacerta/web dev   # http://localhost:5173
 pnpm demo   # abre o demo de referência
 ```
 
