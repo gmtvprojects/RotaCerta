@@ -1,5 +1,6 @@
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, type Role } from '@rotacerta/domain';
 import { useStore } from '../app/store';
+import { InstallCard } from './InstallCard';
 
 const ROLES: Role[] = ['atendente', 'expedicao', 'motorista', 'gestao'];
 
@@ -19,6 +20,7 @@ export function Login() {
             </button>
           ))}
         </div>
+        <InstallCard compact />
       </section>
     </div>
   );
