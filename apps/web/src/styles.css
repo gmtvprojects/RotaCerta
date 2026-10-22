@@ -110,3 +110,25 @@ textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); bord
 .plan-list .handle { cursor: grab; color: var(--muted); letter-spacing: -2px; user-select: none; }
 .plan-list .num { width: 26px; height: 26px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none; }
 .plan-list button { padding: 6px 10px; }
+
+/* Ficha de papel */
+.steps-intro { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.steps-intro > div { display: flex; gap: 10px; align-items: center; } .steps-intro .num { width: 28px; height: 28px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 700; flex: none; }
+.drop { text-align: center; border-style: dashed; padding: 28px 18px; }
+.notice { background: color-mix(in srgb, var(--amber) 12%, var(--card)); border: 1px solid var(--amber); border-radius: 12px; padding: 12px 14px; font-size: 14px; margin: 0 0 16px; }
+.scan-layout { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; align-items: start; }
+.paper-photo { width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid var(--line); }
+.summary-line { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.paper-sheet { background: #fff; color: #111; border: 1px solid #999; border-radius: 6px; padding: 14px; font-size: 11px; max-width: 760px; margin-top: 10px; }
+.paper-sheet header { display: flex; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 6px; margin-bottom: 6px; }
+.paper-sheet h4 { margin: 10px 0 4px; font-size: 11px; letter-spacing: .04em; } .paper-sheet h4 small { font-weight: 400; margin-left: 8px; }
+.pf-number { text-align: right; display: flex; flex-direction: column; } .pf-number strong { font-size: 15px; }
+.pf-note { font-size: 10px; color: #444; margin: 4px 0; }
+.pf-row { display: flex; gap: 6px; } .pf-row .pf-cell { flex: 1; }
+.pf-cell { border: 1px solid #888; padding: 3px 5px; min-height: 30px; margin-bottom: 4px; } .pf-cell small { display: block; font-size: 8px; color: #555; } .pf-cell span { font-size: 12px; font-family: 'Segoe Print', 'Comic Sans MS', cursive; color: #1a3a8a; }
+.pf-line { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; border: 1px solid #888; padding: 4px 6px; margin-bottom: 4px; } .pf-line small { font-size: 8px; color: #555; width: 100%; }
+.pf-choice { display: inline-flex; align-items: center; gap: 4px; } .pf-checkbox { width: 11px; height: 11px; border: 1px solid #111; display: inline-block; } .pf-checkbox.on { background: #111; box-shadow: inset 0 0 0 2px #fff; }
+.pf-boxes { width: 100%; border-collapse: collapse; } .pf-boxes th, .pf-boxes td { border: 1px solid #888; padding: 3px 5px; height: 24px; font-size: 11px; } .pf-boxes th { font-size: 8px; color: #555; }
+.pf-boxes td { font-family: 'Segoe Print', 'Comic Sans MS', cursive; color: #1a3a8a; } .pf-boxes td .pf-choice { margin-right: 8px; font-family: system-ui; color: #111; }
+@media (max-width: 860px) { .scan-layout { grid-template-columns: 1fr; } }
+@media print { .paper-sheet { border: 0; max-width: none; } .main { padding: 0; } .page-head p { display: none; } }

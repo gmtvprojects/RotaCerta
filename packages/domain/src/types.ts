@@ -141,3 +141,49 @@ export function suggestSequence(orders: Order[], neighborhoods: Neighborhood[]):
       || a.neighborhood.localeCompare(b.neighborhood) || a.window.localeCompare(b.window) || a.id - b.id)
     .map((o) => o.id);
 }
+
+/** Valores de uma ficha de papel (digitados na revisão ou do exemplo). */
+export interface PaperValues extends DeliveryForm {
+  sheetNumber: string;
+  boxes: BoxInput[];
+  gas: number;
+  /** Atendente conferiu a identificação de todos os volumes. */
+  volumesReady: boolean;
+}
+
+export type PaperStatus = 'captured' | 'draft' | 'imported';
+
+export interface PaperForm {
+  id: string;
+  sheetNumber: string;
+  /** `example` usa a ficha RC-000142; `photo` é uma foto própria, sem leitura automática. */
+  mode: 'example' | 'photo';
+  /** Foto reduzida (data URL); ausente no exemplo. */
+  photo?: string;
+  photoName?: string;
+  status: PaperStatus;
+  values: PaperValues;
+  orderId: number | null;
+  createdAt: string;
+  importedAt?: string;
+}
+
+export const MAX_PAPER_BOXES = 20;
+export const EXAMPLE_SHEET_NUMBER = 'RC-000142';
+
+export const blankPaperValues = (sheetNumber = ''): PaperValues => ({
+  ...EMPTY_DELIVERY_FORM, window: '', consent: false, sheetNumber, boxes: [], gas: 0, volumesReady: false,
+});
+
+/** Ficha de exemplo da demonstração (dados fictícios; nunca extraída de imagem). */
+export const examplePaperValues = (): PaperValues => ({
+  sheetNumber: EXAMPLE_SHEET_NUMBER, clientId: null, name: 'Maria Oliveira', phone: '(00) 00000-0142',
+  neighborhood: 'Centro', street: 'Rua Paraná', number: '245', complement: 'Casa', reference: 'Portão azul',
+  window: '14:00–16:00', notes: 'Chamar no portão. Conferir a caixa CX-903 na câmara fria.', consent: true,
+  boxes: [
+    { code: 'CX-901', type: 'ambient', location: DEFAULT_BOX_LOCATION.ambient },
+    { code: 'CX-902', type: 'ambient', location: DEFAULT_BOX_LOCATION.ambient },
+    { code: 'CX-903', type: 'cold', location: DEFAULT_BOX_LOCATION.cold },
+  ],
+  gas: 0, volumesReady: true,
+});

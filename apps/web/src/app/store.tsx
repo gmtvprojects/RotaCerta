@@ -1,19 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { createSeed, volumesOf, type BoxInput, type Dataset, type DeliveryForm, type Order, type PlanDraft, type Role, type Route } from '@rotacerta/domain';
+import { createSeed, volumesOf, type BoxInput, type Dataset, type DeliveryForm, type Order, type PaperForm, type PaperValues, type PlanDraft, type Role, type Route } from '@rotacerta/domain';
 
 const KEY = 'rotacerta:v1';
 
-interface Persisted { role: Role | null; driverId: number; data: Dataset; draft: DeliveryForm | null; plan: PlanDraft | null }
+interface Persisted { role: Role | null; driverId: number; data: Dataset; draft: DeliveryForm | null; plan: PlanDraft | null; papers: PaperForm[] }
 
 function load(): Persisted {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const saved = JSON.parse(raw) as Persisted;
-      return { ...saved, draft: saved.draft ?? null, plan: saved.plan ?? null };
+      return { ...saved, draft: saved.draft ?? null, plan: saved.plan ?? null, papers: saved.papers ?? [] };
     }
   } catch { /* armazenamento indisponível: segue com dados fixos */ }
-  return { role: null, driverId: 3, data: createSeed(), draft: null, plan: null };
+  return { role: null, driverId: 3, data: createSeed(), draft: null, plan: null, papers: [] };
 }
 
 interface Store extends Persisted {
@@ -27,6 +27,11 @@ interface Store extends Persisted {
   createOrder: (form: DeliveryForm) => number;
   /** Grava as caixas; sem caixas a entrega segue aguardando volumes. */
   saveBoxes: (orderId: number, boxes: BoxInput[], gas: number) => void;
+  addPaper: (paper: Omit<PaperForm, "id" | "createdAt" | "status" | "orderId">, status?: PaperForm["status"]) => string;
+  updatePaper: (id: string, patch: Partial<Pick<PaperForm, "status" | "values">>) => void;
+  deletePaper: (id: string) => void;
+  /** Cria a entrega a partir da ficha revisada e vincula os dois. Devolve o código da entrega. */
+  importPaper: (id: string, values: PaperValues) => number | null;
   createRoute: (orderIds: number[], vehicleId: number, departure: string) => number;
   /** Marca ou desmarca volumes na conferência do carregamento. */
   setChecked: (routeId: number, keys: string[], value: boolean) => void;
@@ -62,7 +67,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     ...state,
     login: (role) => setState((s) => ({ ...s, role })),
     logout: () => setState((s) => ({ ...s, role: null })),
-    reset: () => setState((s) => ({ ...s, data: createSeed(), draft: null, plan: null })),
+    reset: () => setState((s) => ({ ...s, data: createSeed(), draft: null, plan: null, papers: [] })),
     setPlan: (plan) => setState((s) => ({ ...s, plan })),
     saveDraft: (form) => setState((s) => (JSON.stringify(s.draft) === JSON.stringify(form) ? s : { ...s, draft: form })),
     createOrder: (form) => {
@@ -89,6 +94,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ...d, clients, orders: [...d.orders, order] };
       });
       return id;
+    },
+    addPaper: (paper, status = 'captured') => {
+      const id = `P${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+      setState((s) => ({ ...s, papers: [...s.papers, { ...paper, id, status, orderId: null, createdAt: new Date().toISOString() }] }));
+      return id;
+    },
+    updatePaper: (id, p) => setState((s) => ({ ...s, papers: s.papers.map((x) => (x.id === id && x.status !== 'imported' ? { ...x, ...p } : x)) })),
+    deletePaper: (id) => setState((s) => ({ ...s, papers: s.papers.filter((x) => x.id !== id || x.status === 'imported') })),
+    importPaper: (id, v) => {
+      const paper = state.papers.find((p) => p.id === id);
+      if (!paper || paper.status === 'imported') return null;
+      const d = state.data;
+      const orderId = Math.max(100, ...d.orders.map((o) => o.id)) + 1;
+      const phoneKey = v.phone.replace(/\D/g, '');
+      const known = v.clientId ?? d.clients.find((c) => c.phone.replace(/\D/g, '') === phoneKey)?.id ?? null;
+      const clientId = known ?? Math.max(0, ...d.clients.map((c) => c.id)) + 1;
+      const clients = known != null ? d.clients : [...d.clients, {
+        id: clientId, name: v.name, phone: v.phone, neighborhood: v.neighborhood, street: v.street,
+        number: v.number, complement: v.complement, reference: v.reference, consent: v.consent,
+      }];
+      const boxes = v.boxes.map((b) => ({ ...b, code: b.code.trim().toUpperCase() }));
+      const order: Order = {
+        id: orderId, clientId, name: v.name, phone: v.phone, neighborhood: v.neighborhood, street: v.street,
+        number: v.number, complement: v.complement, reference: v.reference, consent: v.consent,
+        window: v.window, notes: v.notes, boxes: boxes.map((b) => b.code),
+        boxDetails: Object.fromEntries(boxes.map((b) => [b.code, { type: b.type, location: b.location }])),
+        cold: boxes.filter((b) => b.type === 'cold').length, frozen: boxes.filter((b) => b.type === 'frozen').length, gas: v.gas,
+        storage: 'Câmara fria 01', status: boxes.length && v.volumesReady ? 'ready' : 'awaiting', routeId: null,
+        created: `${new Date().toLocaleDateString('pt-BR')} · ${now()}`, completed: null,
+        history: [{ label: `Ficha ${paper.sheetNumber} revisada e entrega cadastrada`, time: now(), actor: 'Atendente' }],
+      };
+      setState((s) => ({
+        ...s,
+        data: { ...s.data, clients, orders: [...s.data.orders, order] },
+        papers: s.papers.map((p) => (p.id === id ? { ...p, status: 'imported', values: v, orderId, importedAt: new Date().toISOString() } : p)),
+      }));
+      return orderId;
     },
     saveBoxes: (orderId, boxes, gas) => patch((d) => ({
       ...d,

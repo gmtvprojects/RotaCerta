@@ -3,7 +3,8 @@ import { useStore } from '../app/store';
 import { Empty, Header, OrderPill } from './ui';
 
 export function Pendencias() {
-  const { data, draft } = useStore();
+  const { data, draft, papers } = useStore();
+  const pendingPapers = papers.filter((p) => p.status !== 'imported');
   const awaiting = data.orders.filter((o) => o.status === 'awaiting');
   const ready = data.orders.filter((o) => o.status === 'ready');
 
@@ -20,6 +21,17 @@ export function Pendencias() {
             <Link className="btn" to="/atendimento/nova">Continuar</Link>
           </div>
         ) : <Empty>Nenhum rascunho. Os dados digitados ficam salvos neste navegador.</Empty>}
+      </section>
+
+      <section className="card">
+        <h2>Fichas para revisar</h2>
+        {pendingPapers.length === 0 ? <Empty>Nenhuma ficha aguardando revisão.</Empty> : pendingPapers.map((p) => (
+          <div className="row-item" key={p.id}>
+            <div><strong>{p.sheetNumber}</strong> <span className={`pill ${p.status === 'draft' ? 'amber' : 'blue'}`}>{p.status === 'draft' ? 'Rascunho salvo' : 'Foto anexada'}</span>
+              <div className="muted small">{p.values.name || 'Sem nome ainda'}</div></div>
+            <Link className="btn primary" to={`/atendimento/ficha/${p.id}`}>Continuar</Link>
+          </div>
+        ))}
       </section>
 
       <section className="card">

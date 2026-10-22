@@ -6,12 +6,16 @@ import {
 } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { Empty, Header, OrderPill } from './ui';
+import { FichaInicio, FichaModelo, FichaRevisao } from './FichaPapel';
 
 export function Atendimento() {
   return (
     <Routes>
       <Route index element={<Inicio />} />
       <Route path="nova" element={<NovaEntrega />} />
+      <Route path="ficha" element={<FichaInicio />} />
+      <Route path="ficha/:paperId" element={<FichaRevisao />} />
+      <Route path="modelo" element={<FichaModelo />} />
       <Route path="caixas/:orderId" element={<IdentificarCaixas />} />
       <Route path="concluido/:orderId" element={<Concluido />} />
       <Route path="*" element={<Navigate to="/atendimento" replace />} />
@@ -44,6 +48,7 @@ function Inicio() {
           <strong>Continuar atendimento</strong>
           <span>{awaiting} compra(s) aguardando caixas{draft ? ' · 1 rascunho' : ''}</span>
         </Link>
+        <Link className="tile" to="ficha"><strong>Ficha de papel</strong><span>Fotografe a ficha, revise e crie a entrega.</span></Link>
         <Link className="tile" to="/entregas"><strong>Consultar entregas</strong><span>Encontre uma compra pelo cliente ou pelo código.</span></Link>
       </div>
     </>
