@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { closeStop, createSeed, startTrip, volumesOf, type StopOutcome, type BoxInput, type Dataset, type DeliveryForm, type Order, type PaperForm, type PaperValues, type PlanDraft, type Role, type Route } from '@rotacerta/domain';
+import { ROLE_LABELS, closeStop, confirmOrder, createSeed, releaseTrip, setChecks, startTrip, syncSignatures, volumesOf, type StopOutcome, type BoxInput, type Dataset, type DeliveryForm, type Order, type PaperForm, type PaperValues, type PlanDraft, type Role, type Route } from '@rotacerta/domain';
 
 const KEY = 'rotacerta:v2';
 
@@ -32,11 +32,15 @@ interface Store extends Persisted {
   deletePaper: (id: string) => void;
   /** Cria a entrega a partir da ficha revisada e vincula os dois. Devolve o código da entrega. */
   importPaper: (id: string, values: PaperValues) => number | null;
-  createRoute: (orderIds: number[], vehicleId: number, departure: string) => number;
+  createRoute: (orderIds: number[], vehicleId: number, departure: string, driverId?: number | null) => number;
   /** Marca ou desmarca volumes na conferência do carregamento. */
   setChecked: (routeId: number, keys: string[], value: boolean) => void;
+  /** Confirma um pedido já com todos os volumes marcados; devolve o bloqueio, ou null. */
+  confirmOrder: (routeId: number, orderId: number) => string | null;
+  /** Reinicia a conferência de pedidos cujos volumes mudaram depois de conferidos. */
+  syncConference: (routeId: number) => void;
   /** Libera o romaneio ao motorista; só vale com todos os volumes conferidos. */
-  releaseRoute: (routeId: number) => void;
+  releaseRoute: (routeId: number) => string | null;
   /** Desfaz uma carga em conferência e devolve as entregas à fila. */
   discardRoute: (routeId: number) => void;
   setDriver: (driverId: number) => void;
@@ -143,15 +147,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         cold: boxes.filter((b) => b.type === 'cold').length,
         frozen: boxes.filter((b) => b.type === 'frozen').length,
         gas,
-        status: boxes.length ? 'ready' : 'awaiting',
+        // entrega já em carga/rota mantém o status; a conferência detecta a mudança de volumes
+        status: o.routeId != null ? o.status : boxes.length ? 'ready' : 'awaiting',
         history: [...o.history, { label: boxes.length ? `${boxes.length} caixa(s) identificada(s)` : 'Caixas ainda não identificadas', time: now(), actor: 'Atendente' }],
       }),
     })),
-    createRoute: (orderIds, vehicleId, departure) => {
+    createRoute: (orderIds, vehicleId, departure, driverId = null) => {
       let id = 0;
       patch((d) => {
         id = Math.max(1000, ...d.routes.map((r) => r.id)) + 1;
-        const route: Route = { id, vehicleId, driverId: null, orders: orderIds, status: 'loading', departure: departure || 'A definir', created: now(), checked: {} };
+        const route: Route = { id, vehicleId, driverId, orders: orderIds, status: 'loading', departure: departure || 'A definir', created: now(), checked: {} };
         return {
           ...d,
           routes: [...d.routes, route],
@@ -162,29 +167,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
       return id;
     },
-    setChecked: (routeId, keys, value) => patch((d) => ({
-      ...d,
-      routes: d.routes.map((r) => {
-        if (r.id !== routeId || r.status !== 'loading') return r;
-        const checked = { ...(r.checked ?? {}) };
-        keys.forEach((k) => { if (value) checked[k] = true; else delete checked[k]; });
-        return { ...r, checked };
-      }),
-    })),
-    releaseRoute: (routeId) => patch((d) => {
-      const r = d.routes.find((x) => x.id === routeId);
-      if (!r || r.status !== 'loading') return d;
-      const orders = r.orders.map((id) => d.orders.find((o) => o.id === id)).filter((o): o is Order => !!o);
-      if (orders.some((o) => o.routeId !== r.id || o.status !== 'loading')) return d;
-      if (!orders.flatMap(volumesOf).every((v) => r.checked?.[v.key])) return d;
-      return {
-        ...d,
-        routes: d.routes.map((x) => (x.id === routeId ? { ...x, status: 'released' } : x)),
-        orders: d.orders.map((o) => r.orders.includes(o.id)
-          ? { ...o, status: 'released', history: [...o.history, { label: `Volumes conferidos. Romaneio #${r.id} disponível para o motorista`, time: now(), actor: 'Expedição' }] }
-          : o),
-      };
+    setChecked: (routeId, keys, value) => patch((d) => setChecks(d, routeId, keys, value, now(), state.role ? ROLE_LABELS[state.role] : "Expedição")),
+    confirmOrder: (routeId, orderId) => {
+      const r = confirmOrder(state.data, routeId, orderId);
+      if (r.ok) setState((s) => ({ ...s, data: r.data }));
+      return r.ok ? null : r.error;
+    },
+    syncConference: (routeId) => setState((s) => {
+      const data = syncSignatures(s.data, routeId);
+      return data === s.data ? s : { ...s, data };
     }),
+    releaseRoute: (routeId) => {
+      const r = releaseTrip(state.data, routeId, now());
+      if (r.ok) setState((s) => ({ ...s, data: r.data }));
+      return r.ok ? null : r.error;
+    },
     discardRoute: (routeId) => patch((d) => {
       const r = d.routes.find((x) => x.id === routeId);
       if (!r || r.status !== 'loading') return d;

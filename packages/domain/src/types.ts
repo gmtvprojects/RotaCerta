@@ -62,6 +62,12 @@ export interface Route {
   /** Volumes conferidos no carregamento, por chave `${orderId}:${volume}`. */
   checked?: Record<string, boolean>;
   claimedAt?: string;
+  /** Pedidos já confirmados na conferência, por código da entrega. */
+  confirmed?: Record<string, boolean>;
+  /** Quem marcou cada volume e quando. */
+  audit?: Record<string, { checked: boolean; at: string; actor: string }>;
+  /** Assinatura dos volumes de cada pedido quando foram conferidos; se mudar, a conferência do pedido recomeça. */
+  signatures?: Record<string, string>;
   finished?: string;
 }
 
@@ -137,7 +143,7 @@ export const DEFAULT_BOX_LOCATION: Record<BoxType, string> = {
 export const BOX_TYPE_LABELS: Record<BoxType, string> = { ambient: 'Ambiente', cold: 'Frio', frozen: 'Congelado' };
 
 /** Carga em planejamento: entregas na ordem das paradas, antes da conferência. */
-export interface PlanDraft { orderIds: number[]; vehicleId: number; departure: string }
+export interface PlanDraft { orderIds: number[]; vehicleId: number; departure: string; /** Motorista já definido pela expedição; vazio = escolhido ao iniciar. */ driverId?: number | null }
 
 /** Ordem sugerida: por região, bairro e janela de entrega. */
 export function suggestSequence(orders: Order[], neighborhoods: Neighborhood[]): number[] {

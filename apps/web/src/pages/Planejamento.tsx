@@ -25,6 +25,7 @@ export function Planejamento() {
   const busy = new Set(data.routes.filter((r) => r.status !== 'finished').map((r) => r.vehicleId));
   const vehicles = data.vehicles.filter((v) => !busy.has(v.id) || v.id === plan.vehicleId);
   const vehicle = data.vehicles.find((v) => v.id === plan.vehicleId);
+  const inTrip = new Set(data.routes.filter((r) => r.status === 'active' && r.driverId != null).map((r) => r.driverId));
   const volumes = stops.reduce((n, o) => n + o.boxes.length + o.gas, 0);
   const over = vehicle ? volumes > vehicle.capacity : false;
   const stale = stops.filter((o) => o.status !== 'ready');
@@ -47,7 +48,7 @@ export function Planejamento() {
     if (stale.length) { setError('Uma entrega já foi atribuída a outra carga. Remova-a da lista.'); return; }
     if (!plan.vehicleId) { setError('Escolha um veículo disponível.'); return; }
     setError('');
-    createRoute(plan.orderIds, plan.vehicleId, plan.departure);
+    createRoute(plan.orderIds, plan.vehicleId, plan.departure, plan.driverId ?? null);
     setPlan(null);
     navigate('/carregamento');
   };
@@ -67,6 +68,12 @@ export function Planejamento() {
           <label>Saída
             <select value={plan.departure} onChange={(e) => setPlan({ ...plan, departure: e.target.value })}>
               {data.departures.map((d) => <option key={d}>{d}</option>)}
+            </select>
+          </label>
+          <label>Motorista
+            <select value={plan.driverId ?? ''} onChange={(e) => setPlan({ ...plan, driverId: e.target.value ? Number(e.target.value) : null })}>
+              <option value="">Qualquer um (escolhe ao iniciar)</option>
+              {data.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}{inTrip.has(d.id) ? ' · em viagem' : ''}</option>)}
             </select>
           </label>
           <button type="button" onClick={() => setOrder(suggestSequence(stops, data.neighborhoods))}>Sugerir por região e bairro</button>

@@ -143,3 +143,16 @@ textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); bord
 .trip-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 14px; margin-bottom: 8px; }
 .next .actions { margin-top: 14px; } .next .actions .primary { flex: 1; }
 .as-driver { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+
+/* Conferência e etiquetas */
+.conf-order.confirmed { opacity: .85; }
+.audit { display: block; font-size: 12px; }
+.textbtn { border: 0; background: none; color: var(--brand); padding: 4px 0; text-decoration: underline; }
+.labels { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.label { display: grid; grid-template-columns: 90px 1fr; border: 1px dashed #555; border-radius: 8px; background: #fff; color: #111; break-inside: avoid; }
+.label-perm { border-right: 1px dashed #555; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.label-perm strong { font-size: 20px; letter-spacing: -.5px; }
+.label-tmp { padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.label small { font-size: 10px; color: #555; letter-spacing: .04em; }
+.label-cold { font-weight: 700; }
+@media print { .labels { grid-template-columns: repeat(2, 1fr); gap: 6px; } .chips { display: none; } }

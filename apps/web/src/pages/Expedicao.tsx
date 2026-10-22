@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { suggestSequence } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { Empty, Header } from './ui';
@@ -12,6 +12,7 @@ export function Expedicao() {
   const [vehicleId, setVehicleId] = useState<number>(plan?.vehicleId ?? 0);
   const [departure, setDeparture] = useState(plan?.departure ?? data.departures[0] ?? '');
 
+  const loadingRoutes = data.routes.filter((r) => r.status === 'loading');
   const busy = new Set(data.routes.filter((r) => r.status !== 'finished').map((r) => r.vehicleId));
   const freeVehicles = data.vehicles.filter((v) => !busy.has(v.id));
   const zoneOf = (n: string) => data.neighborhoods.find((x) => x.name === n)?.zone ?? 'Sem região';
@@ -23,13 +24,24 @@ export function Expedicao() {
     if (!selected.length || !vehicle) return;
     const kept = (plan?.orderIds ?? []).filter((id) => selected.includes(id));
     const added = data.orders.filter((o) => selected.includes(o.id) && !kept.includes(o.id));
-    setPlan({ orderIds: [...kept, ...suggestSequence(added, data.neighborhoods)], vehicleId: vehicle, departure });
+    setPlan({ orderIds: [...kept, ...suggestSequence(added, data.neighborhoods)], vehicleId: vehicle, departure, driverId: plan?.driverId ?? null });
     navigate('/planejamento');
   };
 
   return (
     <>
       <Header title="A próxima viagem começa aqui." subtitle="Agrupe os bairros. O motorista mantém a decisão sobre a carga." />
+      {loadingRoutes.length > 0 && (
+        <section className="card">
+          <h2>Cargas em conferência</h2>
+          {loadingRoutes.map((r) => (
+            <div className="row-item" key={r.id}>
+              <div><strong>Romaneio #{r.id}</strong><div className="muted small">{r.orders.length} pedido(s) · saída {r.departure} · {Object.keys(r.confirmed ?? {}).length} de {r.orders.length} confirmados</div></div>
+              <Link className="btn primary" to="/carregamento">Retomar conferência</Link>
+            </div>
+          ))}
+        </section>
+      )}
       <div className="chips">
         <button type="button" className={!zone ? 'chip on' : 'chip'} onClick={() => setZone('')}>Todas as regiões</button>
         {data.zones.map((z) => <button key={z} type="button" className={zone === z ? 'chip on' : 'chip'} onClick={() => setZone(z)}>{z}</button>)}
