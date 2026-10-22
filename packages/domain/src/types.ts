@@ -129,3 +129,15 @@ export const DEFAULT_BOX_LOCATION: Record<BoxType, string> = {
 };
 
 export const BOX_TYPE_LABELS: Record<BoxType, string> = { ambient: 'Ambiente', cold: 'Frio', frozen: 'Congelado' };
+
+/** Carga em planejamento: entregas na ordem das paradas, antes da conferência. */
+export interface PlanDraft { orderIds: number[]; vehicleId: number; departure: string }
+
+/** Ordem sugerida: por região, bairro e janela de entrega. */
+export function suggestSequence(orders: Order[], neighborhoods: Neighborhood[]): number[] {
+  const zone = (n: string) => neighborhoods.find((x) => x.name === n)?.zone ?? '';
+  return orders.slice()
+    .sort((a, b) => zone(a.neighborhood).localeCompare(zone(b.neighborhood))
+      || a.neighborhood.localeCompare(b.neighborhood) || a.window.localeCompare(b.window) || a.id - b.id)
+    .map((o) => o.id);
+}

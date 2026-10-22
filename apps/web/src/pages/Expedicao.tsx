@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { suggestSequence } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { Empty, Header } from './ui';
 
 export function Expedicao() {
-  const { data, createRoute } = useStore();
+  const { data, plan, setPlan } = useStore();
   const navigate = useNavigate();
   const [zone, setZone] = useState<string>('');
-  const [selected, setSelected] = useState<number[]>([]);
-  const [vehicleId, setVehicleId] = useState<number>(0);
-  const [departure, setDeparture] = useState(data.departures[0] ?? '');
+  const [selected, setSelected] = useState<number[]>(plan?.orderIds ?? []);
+  const [vehicleId, setVehicleId] = useState<number>(plan?.vehicleId ?? 0);
+  const [departure, setDeparture] = useState(plan?.departure ?? data.departures[0] ?? '');
 
   const busy = new Set(data.routes.filter((r) => r.status !== 'finished').map((r) => r.vehicleId));
   const freeVehicles = data.vehicles.filter((v) => !busy.has(v.id));
@@ -20,9 +21,10 @@ export function Expedicao() {
 
   const generate = () => {
     if (!selected.length || !vehicle) return;
-    createRoute(selected, vehicle, departure);
-    setSelected([]);
-    navigate('/carregamento');
+    const kept = (plan?.orderIds ?? []).filter((id) => selected.includes(id));
+    const added = data.orders.filter((o) => selected.includes(o.id) && !kept.includes(o.id));
+    setPlan({ orderIds: [...kept, ...suggestSequence(added, data.neighborhoods)], vehicleId: vehicle, departure });
+    navigate('/planejamento');
   };
 
   return (
@@ -60,7 +62,7 @@ export function Expedicao() {
             </select>
           </label>
           <button type="button" className="primary" disabled={!selected.length || !vehicle} onClick={generate}>
-            Montar carga para conferência ({selected.length})
+            Planejar sequência ({selected.length})
           </button>
         </div>
       </section>

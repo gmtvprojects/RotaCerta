@@ -102,3 +102,11 @@ textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); bord
 .conf-vol.ok { background: color-mix(in srgb, var(--green) 10%, var(--card)); border-color: var(--green); }
 .conf-vol input { width: 20px; height: 20px; }
 .grow { flex: 1; }
+
+/* Planejamento */
+.plan-list { list-style: none; margin: 0; padding: 0; }
+.plan-list li { display: flex; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; background: var(--card); }
+.plan-list li.dragging { opacity: .4; }
+.plan-list .handle { cursor: grab; color: var(--muted); letter-spacing: -2px; user-select: none; }
+.plan-list .num { width: 26px; height: 26px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none; }
+.plan-list button { padding: 6px 10px; }

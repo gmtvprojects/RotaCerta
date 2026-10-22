@@ -13,8 +13,9 @@ import { Configuracoes } from '../pages/Configuracoes';
 import { Atendimento } from '../pages/Atendimento';
 import { Pendencias } from '../pages/Pendencias';
 import { Carregamento } from '../pages/Carregamento';
+import { Planejamento } from '../pages/Planejamento';
 
-interface PageDef { page: Page; path: string; label: string; element: JSX.Element }
+interface PageDef { page: Page; path: string; label: string; element: JSX.Element; hidden?: boolean }
 
 const PAGES: PageDef[] = [
   { page: 'dashboard', path: '/gestao', label: 'Painel de gestão', element: <Dashboard /> },
@@ -23,6 +24,7 @@ const PAGES: PageDef[] = [
   { page: 'entregas', path: '/entregas', label: 'Entregas', element: <Entregas /> },
   { page: 'volumes', path: '/volumes', label: 'Volumes e caixas', element: <Volumes /> },
   { page: 'expedicao', path: '/expedicao', label: 'Montar carga', element: <Expedicao /> },
+  { page: 'planejamento', path: '/planejamento', label: 'Planejamento', element: <Planejamento />, hidden: true },
   { page: 'carregamento', path: '/carregamento', label: 'Carregamento', element: <Carregamento /> },
   { page: 'romaneio', path: '/romaneios', label: 'Romaneios', element: <Romaneios /> },
   { page: 'motorista', path: '/motorista', label: 'Motorista', element: <Motorista /> },
@@ -49,7 +51,7 @@ export function App() {
       <aside className="side">
         <div className="brand"><strong>RotaCerta</strong><small>Gestão de entregas</small></div>
         <nav>
-          {menu.map((m) => (
+          {menu.filter((m) => !m.hidden).map((m) => (
             <NavLink key={m.path} to={m.path} className={({ isActive }) => (isActive ? 'active' : '')}>{m.label}</NavLink>
           ))}
         </nav>

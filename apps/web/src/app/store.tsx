@@ -1,19 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { createSeed, volumesOf, type BoxInput, type Dataset, type DeliveryForm, type Order, type Role, type Route } from '@rotacerta/domain';
+import { createSeed, volumesOf, type BoxInput, type Dataset, type DeliveryForm, type Order, type PlanDraft, type Role, type Route } from '@rotacerta/domain';
 
 const KEY = 'rotacerta:v1';
 
-interface Persisted { role: Role | null; driverId: number; data: Dataset; draft: DeliveryForm | null }
+interface Persisted { role: Role | null; driverId: number; data: Dataset; draft: DeliveryForm | null; plan: PlanDraft | null }
 
 function load(): Persisted {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const saved = JSON.parse(raw) as Persisted;
-      return { ...saved, draft: saved.draft ?? null };
+      return { ...saved, draft: saved.draft ?? null, plan: saved.plan ?? null };
     }
   } catch { /* armazenamento indisponível: segue com dados fixos */ }
-  return { role: null, driverId: 3, data: createSeed(), draft: null };
+  return { role: null, driverId: 3, data: createSeed(), draft: null, plan: null };
 }
 
 interface Store extends Persisted {
@@ -21,6 +21,8 @@ interface Store extends Persisted {
   logout: () => void;
   reset: () => void;
   saveDraft: (form: DeliveryForm | null) => void;
+  /** Guarda (ou limpa) a carga em planejamento. */
+  setPlan: (plan: PlanDraft | null) => void;
   /** Cadastra a entrega (e o cliente, se novo) como "aguardando volumes". */
   createOrder: (form: DeliveryForm) => number;
   /** Grava as caixas; sem caixas a entrega segue aguardando volumes. */
@@ -60,7 +62,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     ...state,
     login: (role) => setState((s) => ({ ...s, role })),
     logout: () => setState((s) => ({ ...s, role: null })),
-    reset: () => setState((s) => ({ ...s, data: createSeed(), draft: null })),
+    reset: () => setState((s) => ({ ...s, data: createSeed(), draft: null, plan: null })),
+    setPlan: (plan) => setState((s) => ({ ...s, plan })),
     saveDraft: (form) => setState((s) => (JSON.stringify(s.draft) === JSON.stringify(form) ? s : { ...s, draft: form })),
     createOrder: (form) => {
       let id = 0;
