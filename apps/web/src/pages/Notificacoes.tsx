@@ -16,7 +16,7 @@ export function Notificacoes() {
                   <td>{n.created}</td><td>{n.name}<div className="muted small">{n.phone}</div></td>
                   <td>{n.event === 'rota_iniciada' ? 'Rota iniciada' : 'Entrega concluída'}</td>
                   <td className="small">{n.message}</td>
-                  <td><span className={`pill ${n.status === 'delivered' ? 'green' : 'red'}`}>{n.status === 'delivered' ? 'Enviado' : 'Falhou'}</span>{n.reason && <div className="muted small">{n.reason}</div>}</td>
+                  <td><span className={`pill ${n.status === 'delivered' ? 'green' : n.status === 'skipped' ? 'amber' : 'red'}`}>{n.status === 'delivered' ? 'Enviado' : n.status === 'skipped' ? 'Não enviado' : 'Falhou'}</span>{n.reason && <div className="muted small">{n.reason}</div>}</td>
                 </tr>
               ))}
             </tbody>

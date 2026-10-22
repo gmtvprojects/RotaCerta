@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { createSeed, volumesOf, type BoxInput, type Dataset, type DeliveryForm, type Order, type PaperForm, type PaperValues, type PlanDraft, type Role, type Route } from '@rotacerta/domain';
+import { closeStop, createSeed, startTrip, volumesOf, type StopOutcome, type BoxInput, type Dataset, type DeliveryForm, type Order, type PaperForm, type PaperValues, type PlanDraft, type Role, type Route } from '@rotacerta/domain';
 
-const KEY = 'rotacerta:v1';
+const KEY = 'rotacerta:v2';
 
 interface Persisted { role: Role | null; driverId: number; data: Dataset; draft: DeliveryForm | null; plan: PlanDraft | null; papers: PaperForm[] }
 
@@ -39,9 +39,11 @@ interface Store extends Persisted {
   releaseRoute: (routeId: number) => void;
   /** Desfaz uma carga em conferência e devolve as entregas à fila. */
   discardRoute: (routeId: number) => void;
-  startRoute: (routeId: number) => void;
-  completeDelivery: (orderId: number) => void;
-  failDelivery: (orderId: number) => void;
+  setDriver: (driverId: number) => void;
+  /** Inicia a viagem; devolve a mensagem de bloqueio, ou null se deu certo. */
+  startRoute: (routeId: number) => string | null;
+  /** Conclui ou registra ocorrência na parada atual; devolve o bloqueio, ou null. */
+  finishStop: (orderId: number, outcome: StopOutcome) => string | null;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -194,29 +196,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           : o),
       };
     }),
-    startRoute: (routeId) => setState((s) => ({
-      ...s,
-      data: {
-        ...s.data,
-        routes: s.data.routes.map((r) => r.id === routeId ? { ...r, status: 'active', driverId: s.driverId } : r),
-        orders: s.data.orders.map((o) => o.routeId === routeId && o.status === 'released' ? { ...o, status: 'onroute' } : o),
-      },
-    })),
-    completeDelivery: (orderId) => patch((d) => closeOrder(d, orderId, 'delivered', 'Entrega concluída')),
-    failDelivery: (orderId) => patch((d) => closeOrder(d, orderId, 'failed', 'Não entregue')),
+    setDriver: (driverId) => setState((s) => ({ ...s, driverId })),
+    startRoute: (routeId) => {
+      const r = startTrip(state.data, routeId, state.driverId, now());
+      if (r.ok) setState((s) => ({ ...s, data: r.data }));
+      return r.ok ? null : r.error;
+    },
+    finishStop: (orderId, outcome) => {
+      const r = closeStop(state.data, orderId, state.driverId, state.role === 'gestao', now(), outcome);
+      if (r.ok) setState((s) => ({ ...s, data: r.data }));
+      return r.ok ? null : r.error;
+    },
   }), [state, patch]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-function closeOrder(d: Dataset, orderId: number, status: 'delivered' | 'failed', label: string): Dataset {
-  const target = d.orders.find((o) => o.id === orderId);
-  if (!target) return d;
-  const orders = d.orders.map((o) => o.id === orderId
-    ? { ...o, status, completed: now(), history: [...o.history, { label, time: now(), actor: 'Motorista' }] }
-    : o);
-  const routes = d.routes.map((r) => r.id === target.routeId && r.orders.every((id) => orders.find((o) => o.id === id)?.status !== 'onroute')
-    ? { ...r, status: 'finished' as const }
-    : r);
-  return { ...d, orders, routes };
-}

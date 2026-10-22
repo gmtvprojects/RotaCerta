@@ -25,3 +25,16 @@ export const RoutePill = ({ status }: { status: Route['status'] }) => (
 );
 
 export const Empty = ({ children }: { children: ReactNode }) => <div className="empty">{children}</div>;
+
+export function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
+  return (
+    <div className="backdrop" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+        <h2>{title}</h2>
+        <div className="modal-body">{children}</div>
+        <div className="modal-foot">{footer}</div>
+      </div>
+    </div>
+  );
+}

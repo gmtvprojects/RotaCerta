@@ -44,6 +44,10 @@ export interface Order {
   routeId: number | null;
   created: string;
   completed: string | null;
+  /** Quem recebeu a entrega, informado pelo motorista. */
+  receiver?: string;
+  /** Motivo registrado quando a entrega não foi feita. */
+  occurrence?: { reason: string; notes: string };
   history: OrderEvent[];
 }
 
@@ -57,6 +61,8 @@ export interface Route {
   created: string;
   /** Volumes conferidos no carregamento, por chave `${orderId}:${volume}`. */
   checked?: Record<string, boolean>;
+  claimedAt?: string;
+  finished?: string;
 }
 
 /** Um volume físico a conferir: caixa ou item fora das caixas. */
@@ -79,7 +85,7 @@ export interface Notification {
   orderId: number;
   name: string;
   phone: string;
-  status: 'delivered' | 'failed';
+  status: 'delivered' | 'failed' | 'skipped';
   event: 'rota_iniciada' | 'entrega_concluida';
   created: string;
   message: string;

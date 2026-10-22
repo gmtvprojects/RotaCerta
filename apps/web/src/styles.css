@@ -132,3 +132,14 @@ textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); bord
 .pf-boxes td { font-family: 'Segoe Print', 'Comic Sans MS', cursive; color: #1a3a8a; } .pf-boxes td .pf-choice { margin-right: 8px; font-family: system-ui; color: #111; }
 @media (max-width: 860px) { .scan-layout { grid-template-columns: 1fr; } }
 @media print { .paper-sheet { border: 0; max-width: none; } .main { padding: 0; } .page-head p { display: none; } }
+
+/* Motorista */
+.backdrop { position: fixed; inset: 0; background: rgba(10, 18, 34, .55); display: grid; place-items: center; padding: 16px; z-index: 50; }
+.modal { background: var(--card); border-radius: 18px; padding: 22px; width: 100%; max-width: 460px; max-height: 90vh; overflow: auto; }
+.modal-body { margin: 12px 0; display: grid; gap: 10px; } .modal-foot { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.banner { border: 1px solid var(--red); background: color-mix(in srgb, var(--red) 10%, var(--card)); color: var(--red); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-weight: 600; }
+.banner.info { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, var(--card)); color: var(--ink); }
+.trip { max-width: 560px; }
+.trip-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+.next .actions { margin-top: 14px; } .next .actions .primary { flex: 1; }
+.as-driver { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 14px; }

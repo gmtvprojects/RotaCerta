@@ -1,5 +1,6 @@
 import type { Client, Dataset, Notification, Order, Route } from './types';
 import type { OrderStatus } from './status';
+import { volumesOf } from './types';
 
 const NAMES = ['Maria Oliveira', 'João Ribeiro', 'Ana Souza', 'Paulo Lima', 'Juliana Rocha', 'Roberto Alves', 'Fernanda Santos', 'Marcos Costa', 'Camila Martins', 'Pedro Almeida', 'Beatriz Nunes', 'Lucas Ferreira', 'Patrícia Barros', 'Renato Silva', 'Aline Moraes', 'Eduardo Gomes', 'Cláudia Dias', 'Ricardo Melo', 'Helena Castro', 'Sérgio Lopes'];
 const NEIGHBORHOODS = [
@@ -60,6 +61,11 @@ export function createSeed(): Dataset {
     { id: 1047, vehicleId: 1, driverId: 1, orders: [101, 102, 103, 104, 105, 106], status: 'active', departure: '14:00', created: '13:40' },
     { id: 1048, vehicleId: 2, driverId: null, orders: [107, 108, 109, 110], status: 'released', departure: '15:00', created: '14:05' },
   ];
+
+  for (const r of routes) {
+    r.checked = {};
+    for (const id of r.orders) for (const v of volumesOf(orders.find((o) => o.id === id)!)) r.checked[v.key] = true;
+  }
 
   const note = (id: string, routeId: number, o: Order, status: Notification['status'], event: Notification['event'], created: string, reason = ''): Notification => ({
     id, routeId, orderId: o.id, name: o.name, phone: o.phone, status, event, created, reason,
