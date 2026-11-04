@@ -17,22 +17,19 @@ const AREA: Partial<Record<Page, string>> = {
 const ROLES: Role[] = ['atendente', 'expedicao', 'motorista', 'gestao'];
 
 export function Perfil() {
-  const { role, data, driverId, login, logout } = useStore();
+  const { role, user, data, driverId, logout } = useStore();
   const tour = useTour();
   const navigate = useNavigate();
   if (!role) return null;
-  const person = role === 'motorista' ? data.drivers.find((d) => d.id === driverId)?.name ?? PEOPLE[role] : PEOPLE[role];
+  const person = user?.name ?? (role === 'motorista' ? data.drivers.find((d) => d.id === driverId)?.name ?? PEOPLE[role] : PEOPLE[role]);
   const areas = [...new Set(ALLOWED_PAGES[role].map((p) => AREA[p]).filter(Boolean))];
 
-  const presentAs = (r: Role) => {
-    login(r);
-    // A jornada começa depois que o perfil muda.
-    setTimeout(() => navigate(TOURS[r][0].path), 0);
-  };
+  // Trocar de perfil exige entrar com outro usuário; a jornada de cada perfil aparece ao entrar com ele.
+  const presentAs = () => logout();
 
   return (
     <>
-      <Header title="Perfil." subtitle="Quem está usando a demonstração e o que cada perfil enxerga." />
+      <Header title="Perfil." subtitle="Quem está usando o sistema e o que cada perfil enxerga." />
       <section className="card">
         <div className="card-head">
           <div className="avatar">{person.split(' ').map((s) => s[0]).slice(0, 2).join('')}</div>
@@ -41,7 +38,7 @@ export function Perfil() {
         </div>
         <small className="muted">Áreas liberadas</small>
         <div className="chips" style={{ marginTop: 6 }}>{areas.map((a) => <span className="pill blue" key={a}>{a}</span>)}</div>
-        <p className="muted small">Os perfis não implementam autenticação ou segurança de produção.</p>
+        <p className="muted small">Seu acesso é definido pelo perfil do seu usuário.</p>
       </section>
 
       <section className="card">
@@ -51,7 +48,7 @@ export function Perfil() {
           <div className="row-item" key={r}>
             <div><strong>{ROLE_LABELS[r]}</strong> <span className="muted small">· {ROLE_DESCRIPTIONS[r]}</span>
               <div className="muted small">{TOURS[r].map((s) => s.title).join(' → ')}</div></div>
-            <button type="button" disabled={r === role} onClick={() => presentAs(r)}>{r === role ? 'Perfil atual' : 'Apresentar'}</button>
+            <button type="button" disabled={r === role} onClick={presentAs}>{r === role ? 'Perfil atual' : 'Entrar com outro usuário'}</button>
           </div>
         ))}
       </section>

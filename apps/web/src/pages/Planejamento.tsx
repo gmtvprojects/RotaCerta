@@ -48,9 +48,9 @@ export function Planejamento() {
     if (stale.length) { setError('Uma entrega já foi atribuída a outra carga. Remova-a da lista.'); return; }
     if (!plan.vehicleId) { setError('Escolha um veículo disponível.'); return; }
     setError('');
-    createRoute(plan.orderIds, plan.vehicleId, plan.departure, plan.driverId ?? null);
-    setPlan(null);
-    navigate('/carregamento');
+    createRoute(plan.orderIds, plan.vehicleId, plan.departure, plan.driverId ?? null)
+      .then(() => { setPlan(null); navigate('/carregamento'); })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Não foi possível montar a carga.'));
   };
 
   return (

@@ -48,7 +48,7 @@ const homePath = (role: Role) => PAGES.find((p) => p.page === ROLE_HOME[role])!.
 const menuFor = (role: Role) => PAGES.filter((p) => ALLOWED_PAGES[role].includes(p.page));
 
 export function App() {
-  const { role, logout } = useStore();
+  const { role, logout, connection, problem, clearProblem, refresh } = useStore();
   const { pathname } = useLocation();
   const tour = useTour();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -57,6 +57,18 @@ export function App() {
   useEffect(() => { setMenuOpen(false); window.scrollTo(0, 0); }, [pathname]);
 
   if (!role) return <Login />;
+  if (connection !== 'ready') {
+    return (
+      <div className="login"><section className="login-card">
+        <div className="brand"><strong>RotaCerta</strong><small>Gestão de entregas</small></div>
+        {connection === 'loading' ? <p className="muted">Carregando os dados da operação…</p> : <>
+          <p className="error" role="alert">{problem ?? 'Não foi possível falar com o servidor.'}</p>
+          <button type="button" className="primary" onClick={() => void refresh()}>Tentar de novo</button>
+          <button type="button" onClick={logout}>Sair</button>
+        </>}
+      </section></div>
+    );
+  }
 
   const menu = menuFor(role);
   const current = PAGES.find((p) => pathname === p.path || pathname.startsWith(`${p.path}/`));
@@ -81,6 +93,7 @@ export function App() {
         </div>
       </aside>
       <main className="main">
+        {problem && <div className="banner error" role="alert">{problem} <button type="button" onClick={clearProblem}>Fechar</button></div>}
         <Routes>
           {menu.map((m) => <Route key={m.path} path={`${m.path}/*`} element={m.element} />)}
           <Route path="*" element={<Navigate to={homePath(role)} replace />} />

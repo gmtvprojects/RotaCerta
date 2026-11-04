@@ -15,7 +15,7 @@ export function InstallCard({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className={compact ? 'pwa pwa-compact' : 'card pwa'}>
-      {!compact && <><h2>RotaCerta no celular</h2><p className="muted small">Instale para abrir em tela cheia, como um aplicativo. Os dados continuam sendo uma demonstração local.</p></>}
+      {!compact && <><h2>RotaCerta no celular</h2><p className="muted small">Instale para abrir em tela cheia, como um aplicativo. Os dados ficam no servidor e aparecem em todos os aparelhos.</p></>}
       <div className="actions">
         {!pwa.standalone && <button type="button" className={compact ? 'textbtn' : 'primary'} onClick={onInstall}>Instalar no celular</button>}
         {pwa.updateAvailable && <button type="button" className="primary" onClick={pwa.applyUpdate}>Atualizar agora</button>}

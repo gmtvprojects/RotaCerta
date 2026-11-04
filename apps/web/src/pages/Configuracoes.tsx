@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { addDeparture, addDriver, addNeighborhood, addZone, removeDeparture, saveVehicle, type Vehicle } from '@rotacerta/domain';
 import { useStore } from '../app/store';
+import type { Req } from '../app/api';
 import { Header, Modal } from './ui';
 
 const TABS = ['Bairros e zonas', 'Veículos', 'Equipe', 'Horários de saída', 'WhatsApp'] as const;
@@ -11,15 +12,14 @@ type Form =
   | { kind: 'vehicle'; vehicle?: Vehicle };
 
 export function Configuracoes() {
-  const { data, reset } = useStore();
+  const { data } = useStore();
   const [tab, setTab] = useState<Tab>('Bairros e zonas');
   const [form, setForm] = useState<Form | null>(null);
   const busyVehicles = new Set(data.routes.filter((r) => r.status !== 'finished').map((r) => r.vehicleId));
 
   return (
     <>
-      <Header title="A operação do seu jeito." subtitle="Bairros, equipe e regras simples para começar."
-        actions={<button type="button" onClick={() => { if (confirm('Apagar as alterações locais e voltar ao cenário original?')) reset(); }}>Reiniciar demonstração</button>} />
+      <Header title="A operação do seu jeito." subtitle="Bairros, equipe e regras simples para começar." />
       <div className="chips">{TABS.map((t) => <button key={t} type="button" className={tab === t ? 'chip on' : 'chip'} onClick={() => setTab(t)}>{t}</button>)}</div>
 
       {tab === 'Bairros e zonas' && (
@@ -90,7 +90,7 @@ export function Configuracoes() {
 
 function RemoveDeparture({ time }: { time: string }) {
   const { change } = useStore();
-  return <button type="button" onClick={() => { const err = change((d) => removeDeparture(d, time)); if (err) alert(err); }}>Remover</button>;
+  return <button type="button" onClick={() => { const err = change((d) => removeDeparture(d, time), { method: 'DELETE', path: `/config/departures/${encodeURIComponent(time)}` }); if (err) alert(err); }}>Remover</button>;
 }
 
 function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
@@ -117,6 +117,14 @@ function ConfigDialog({ form, onClose }: { form: Form; onClose: () => void }) {
   const titles = { zone: 'Adicionar região', neighborhood: 'Adicionar bairro', driver: 'Adicionar motorista', departure: 'Adicionar horário de saída', vehicle: v ? 'Editar veículo' : 'Adicionar veículo' };
 
   const save = () => {
+    const vehicleBody = { name, plate, capacity: Number(capacity) };
+    const request: Req = {
+      zone: { method: 'POST', path: '/config/zones', body: { name } },
+      neighborhood: { method: 'POST', path: '/config/neighborhoods', body: { name, zone } },
+      driver: { method: 'POST', path: '/config/drivers', body: { name } },
+      departure: { method: 'POST', path: '/config/departures', body: { time } },
+      vehicle: v ? { method: 'PUT', path: `/config/vehicles/${v.id}`, body: vehicleBody } : { method: 'POST', path: '/config/vehicles', body: vehicleBody },
+    }[form.kind] as Req;
     const err = change((d) => {
       switch (form.kind) {
         case 'zone': return addZone(d, name);
@@ -125,14 +133,14 @@ function ConfigDialog({ form, onClose }: { form: Form; onClose: () => void }) {
         case 'departure': return addDeparture(d, time);
         case 'vehicle': return saveVehicle(d, { id: v?.id, name, plate, capacity: Number(capacity) });
       }
-    });
+    }, request);
     if (err) setError(err); else onClose();
   };
 
   return (
     <Modal title={titles[form.kind]} onClose={onClose} footer={<>
       <button type="button" onClick={onClose}>Cancelar</button>
-      <button type="button" className="primary" onClick={save}>Salvar na demonstração</button>
+      <button type="button" className="primary" onClick={save}>Salvar</button>
     </>}>
       {form.kind !== 'departure' && (
         <label className="field">

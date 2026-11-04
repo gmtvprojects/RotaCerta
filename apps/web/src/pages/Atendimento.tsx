@@ -83,13 +83,17 @@ function NovaEntrega() {
     setSearch('');
   };
 
-  const submit = () => {
+  const submit = async () => {
     const missing = (['name', 'phone', 'neighborhood', 'street', 'number'] as const).filter((k) => !form[k].trim());
     if (missing.length) { setError('Preencha nome, telefone, bairro, rua e número.'); return; }
     setError('');
-    const id = createOrder(form);
-    saveDraft(null);
-    navigate(`/atendimento/caixas/${id}`);
+    try {
+      const id = await createOrder(form);
+      saveDraft(null);
+      navigate(`/atendimento/caixas/${id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível cadastrar a entrega.');
+    }
   };
 
   const discard = () => { setForm(EMPTY_DELIVERY_FORM); saveDraft(null); };
@@ -179,7 +183,8 @@ function IdentificarCaixas() {
     if (dup) { setError(`A caixa ${dup} já está vinculada a outra entrega.`); return; }
     if (boxes.some((b) => b.type !== 'ambient' && !b.location.trim())) { setError('Informe a câmara e a posição das caixas do frio.'); return; }
     setError('');
-    saveBoxes(order.id, boxes, gas);
+    const failed = saveBoxes(order.id, boxes, gas);
+    if (failed) { setError(failed); return; }
     navigate(`/atendimento/concluido/${order.id}`);
   };
 

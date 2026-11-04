@@ -1,38 +1,61 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ROLE_LABELS, retryNotice, settleNotice, type TripResult, closeStop, confirmOrder, createSeed, releaseTrip, setChecks, startTrip, syncSignatures, volumesOf, type StopOutcome, type BoxInput, type Dataset, type DeliveryForm, type Order, type PaperForm, type PaperValues, type PlanDraft, type Role, type Route } from '@rotacerta/domain';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  closeStop, confirmOrder, deletePaper as deletePaperLocal, discardRoute as discardRouteLocal,
+  releaseTrip, retryNotice, saveBoxes as saveBoxesLocal, setChecks, startTrip, syncSignatures, updatePaper as updatePaperLocal,
+  type BoxInput, type Clock, type Dataset, type DeliveryForm, type PaperForm, type PaperValues, type PlanDraft, type Role, type StopOutcome, type TripResult,
+} from '@rotacerta/domain';
+import { ApiError, fetchSnapshot, login as apiLogin, send, setToken, wsUrl, type Req, type SessionUser } from './api';
 
-const KEY = 'rotacerta:v2';
+/** Estado que fica só neste aparelho: sessão e rascunhos. Os dados da operação vêm do servidor. */
+const KEY = 'rotacerta:v3';
 
-interface Persisted { role: Role | null; driverId: number; data: Dataset; draft: DeliveryForm | null; plan: PlanDraft | null; papers: PaperForm[] }
+interface Local { token: string | null; user: SessionUser | null; driverId: number; draft: DeliveryForm | null; plan: PlanDraft | null }
 
-function load(): Persisted {
+const EMPTY_DATA: Dataset = { clients: [], neighborhoods: [], zones: [], vehicles: [], drivers: [], orders: [], routes: [], notifications: [], departures: [] };
+
+function load(): Local {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const saved = JSON.parse(raw) as Persisted;
-      return { ...saved, draft: saved.draft ?? null, plan: saved.plan ?? null, papers: saved.papers ?? [] };
+      const s = JSON.parse(raw) as Partial<Local>;
+      return { token: s.token ?? null, user: s.user ?? null, driverId: s.driverId ?? s.user?.driverId ?? 1, draft: s.draft ?? null, plan: s.plan ?? null };
     }
-  } catch { /* armazenamento indisponível: segue com dados fixos */ }
-  return { role: null, driverId: 3, data: createSeed(), draft: null, plan: null, papers: [] };
+  } catch { /* armazenamento indisponível: segue sem sessão salva */ }
+  return { token: null, user: null, driverId: 1, draft: null, plan: null };
 }
 
-interface Store extends Persisted {
-  login: (role: Role) => void;
+export type Connection = 'loading' | 'ready' | 'offline';
+
+interface Store {
+  role: Role | null;
+  user: SessionUser | null;
+  driverId: number;
+  data: Dataset;
+  papers: PaperForm[];
+  draft: DeliveryForm | null;
+  plan: PlanDraft | null;
+  /** `loading` enquanto busca os dados; `offline` se o servidor não respondeu e não há dados. */
+  connection: Connection;
+  /** Última falha de uma operação, para mostrar ao usuário. */
+  problem: string | null;
+  clearProblem: () => void;
+  refresh: () => Promise<void>;
+  /** Entra com e-mail e senha; devolve a mensagem de erro, ou null. */
+  login: (email: string, password: string) => Promise<string | null>;
   logout: () => void;
-  reset: () => void;
   saveDraft: (form: DeliveryForm | null) => void;
   /** Guarda (ou limpa) a carga em planejamento. */
   setPlan: (plan: PlanDraft | null) => void;
-  /** Cadastra a entrega (e o cliente, se novo) como "aguardando volumes". */
-  createOrder: (form: DeliveryForm) => number;
-  /** Grava as caixas; sem caixas a entrega segue aguardando volumes. */
-  saveBoxes: (orderId: number, boxes: BoxInput[], gas: number) => void;
-  addPaper: (paper: Omit<PaperForm, "id" | "createdAt" | "status" | "orderId">, status?: PaperForm["status"]) => string;
-  updatePaper: (id: string, patch: Partial<Pick<PaperForm, "status" | "values">>) => void;
+  /** Cadastra a entrega (e o cliente, se novo) como "aguardando volumes". Devolve o código da entrega. */
+  createOrder: (form: DeliveryForm) => Promise<number>;
+  /** Grava as caixas; devolve o erro de validação, ou null. */
+  saveBoxes: (orderId: number, boxes: BoxInput[], gas: number) => string | null;
+  addPaper: (paper: Omit<PaperForm, 'id' | 'createdAt' | 'status' | 'orderId'>, status?: PaperForm['status']) => Promise<string>;
+  updatePaper: (id: string, patch: Partial<Pick<PaperForm, 'status' | 'values'>>) => void;
   deletePaper: (id: string) => void;
   /** Cria a entrega a partir da ficha revisada e vincula os dois. Devolve o código da entrega. */
-  importPaper: (id: string, values: PaperValues) => number | null;
-  createRoute: (orderIds: number[], vehicleId: number, departure: string, driverId?: number | null) => number;
+  importPaper: (id: string, values: PaperValues) => Promise<number | null>;
+  createRoute: (orderIds: number[], vehicleId: number, departure: string, driverId?: number | null) => Promise<number>;
   /** Marca ou desmarca volumes na conferência do carregamento. */
   setChecked: (routeId: number, keys: string[], value: boolean) => void;
   /** Confirma um pedido já com todos os volumes marcados; devolve o bloqueio, ou null. */
@@ -43,10 +66,11 @@ interface Store extends Persisted {
   releaseRoute: (routeId: number) => string | null;
   /** Desfaz uma carga em conferência e devolve as entregas à fila. */
   discardRoute: (routeId: number) => void;
+  /** Escolhe o motorista em nome de quem a gestão opera. */
   setDriver: (driverId: number) => void;
   /** Aplica uma alteração de configuração da loja; devolve o erro de validação, ou null. */
-  change: (fn: (d: Dataset) => TripResult) => string | null;
-  /** Reenvia um aviso com falha (simulado); devolve o erro, ou null. */
+  change: (fn: (d: Dataset) => TripResult, request: Req) => string | null;
+  /** Reenvia um aviso com falha; devolve o erro, ou null. */
   retryNotice: (id: string) => string | null;
   /** Inicia a viagem; devolve a mensagem de bloqueio, ou null se deu certo. */
   startRoute: (routeId: number) => string | null;
@@ -62,166 +86,187 @@ export function useStore(): Store {
   return s;
 }
 
-const now = () => new Date().toTimeString().slice(0, 5);
+const pad = (n: number) => String(n).padStart(2, '0');
+const clockNow = (): Clock => {
+  const d = new Date();
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return { time, stamp: `${d.toLocaleDateString('pt-BR')} · ${time}` };
+};
+
+const initial = load();
+setToken(initial.token);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<Persisted>(load);
+  const [local, setLocal] = useState<Local>(initial);
+  const [snapshot, setSnapshot] = useState<{ data: Dataset; papers: PaperForm[] }>({ data: EMPTY_DATA, papers: [] });
+  const [connection, setConnection] = useState<Connection>(initial.token ? 'loading' : 'ready');
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const tokenRef = useRef(local.token);
+  tokenRef.current = local.token;
 
   useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* ignora */ }
-  }, [state]);
+    try { localStorage.setItem(KEY, JSON.stringify(local)); } catch { /* ignora */ }
+  }, [local]);
 
-  const patch = useCallback((fn: (d: Dataset) => Dataset) => setState((s) => ({ ...s, data: fn(s.data) })), []);
+  const logout = useCallback(() => {
+    setToken(null);
+    setSnapshot({ data: EMPTY_DATA, papers: [] });
+    setConnection('ready');
+    setLocal((s) => ({ ...s, token: null, user: null, plan: null, draft: null }));
+  }, []);
 
-  const value = useMemo<Store>(() => ({
-    ...state,
-    login: (role) => setState((s) => ({ ...s, role })),
-    logout: () => setState((s) => ({ ...s, role: null })),
-    reset: () => setState((s) => ({ ...s, data: createSeed(), draft: null, plan: null, papers: [] })),
-    setPlan: (plan) => setState((s) => ({ ...s, plan })),
-    saveDraft: (form) => setState((s) => (JSON.stringify(s.draft) === JSON.stringify(form) ? s : { ...s, draft: form })),
-    createOrder: (form) => {
-      let id = 0;
-      patch((d) => {
-        id = Math.max(100, ...d.orders.map((o) => o.id)) + 1;
-        let clientId = form.clientId;
-        let clients = d.clients;
-        if (clientId == null) {
-          clientId = Math.max(0, ...d.clients.map((c) => c.id)) + 1;
-          clients = [...d.clients, {
-            id: clientId, name: form.name, phone: form.phone, neighborhood: form.neighborhood, street: form.street,
-            number: form.number, complement: form.complement, reference: form.reference, consent: form.consent,
-          }];
-        }
-        const order: Order = {
-          id, clientId, name: form.name, phone: form.phone, neighborhood: form.neighborhood, street: form.street,
-          number: form.number, complement: form.complement, reference: form.reference, consent: form.consent,
-          window: form.window, notes: form.notes, boxes: [], cold: 0, frozen: 0, gas: 0,
-          storage: 'Câmara fria 01', status: 'awaiting', routeId: null,
-          created: `${new Date().toLocaleDateString('pt-BR')} · ${now()}`, completed: null,
-          history: [{ label: 'Entrega cadastrada', time: now(), actor: 'Atendente' }],
-        };
-        return { ...d, clients, orders: [...d.orders, order] };
-      });
-      return id;
-    },
-    addPaper: (paper, status = 'captured') => {
-      const id = `P${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-      setState((s) => ({ ...s, papers: [...s.papers, { ...paper, id, status, orderId: null, createdAt: new Date().toISOString() }] }));
-      return id;
-    },
-    updatePaper: (id, p) => setState((s) => ({ ...s, papers: s.papers.map((x) => (x.id === id && x.status !== 'imported' ? { ...x, ...p } : x)) })),
-    deletePaper: (id) => setState((s) => ({ ...s, papers: s.papers.filter((x) => x.id !== id || x.status === 'imported') })),
-    importPaper: (id, v) => {
-      const paper = state.papers.find((p) => p.id === id);
-      if (!paper || paper.status === 'imported') return null;
-      const d = state.data;
-      const orderId = Math.max(100, ...d.orders.map((o) => o.id)) + 1;
-      const phoneKey = v.phone.replace(/\D/g, '');
-      const known = v.clientId ?? d.clients.find((c) => c.phone.replace(/\D/g, '') === phoneKey)?.id ?? null;
-      const clientId = known ?? Math.max(0, ...d.clients.map((c) => c.id)) + 1;
-      const clients = known != null ? d.clients : [...d.clients, {
-        id: clientId, name: v.name, phone: v.phone, neighborhood: v.neighborhood, street: v.street,
-        number: v.number, complement: v.complement, reference: v.reference, consent: v.consent,
-      }];
-      const boxes = v.boxes.map((b) => ({ ...b, code: b.code.trim().toUpperCase() }));
-      const order: Order = {
-        id: orderId, clientId, name: v.name, phone: v.phone, neighborhood: v.neighborhood, street: v.street,
-        number: v.number, complement: v.complement, reference: v.reference, consent: v.consent,
-        window: v.window, notes: v.notes, boxes: boxes.map((b) => b.code),
-        boxDetails: Object.fromEntries(boxes.map((b) => [b.code, { type: b.type, location: b.location }])),
-        cold: boxes.filter((b) => b.type === 'cold').length, frozen: boxes.filter((b) => b.type === 'frozen').length, gas: v.gas,
-        storage: 'Câmara fria 01', status: boxes.length && v.volumesReady ? 'ready' : 'awaiting', routeId: null,
-        created: `${new Date().toLocaleDateString('pt-BR')} · ${now()}`, completed: null,
-        history: [{ label: `Ficha ${paper.sheetNumber} revisada e entrega cadastrada`, time: now(), actor: 'Atendente' }],
+  /* ---- fila de gravação: as operações vão ao servidor na ordem em que foram feitas ---- */
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const pending = useRef(0);
+
+  const refresh = useCallback(async () => {
+    if (!tokenRef.current) return;
+    try {
+      const snap = await fetchSnapshot();
+      setSnapshot(snap);
+      setConnection('ready');
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) { logout(); return; }
+      setConnection((c) => (c === 'loading' ? 'offline' : c));
+      if (e instanceof Error) setProblem(e.message);
+    }
+  }, [logout]);
+
+  const enqueue = useCallback(<T,>(fn: () => Promise<T>): Promise<T> => {
+    pending.current += 1;
+    const run = queue.current.catch(() => undefined).then(fn);
+    queue.current = run;
+    // com a fila vazia, o servidor é a verdade: busca o estado e descarta as previsões locais
+    const drain = () => { pending.current -= 1; if (pending.current === 0) void refresh(); };
+    run.then(drain, drain);
+    return run;
+  }, [refresh]);
+
+  /** Mostra o resultado já (previsão local), grava no servidor e, se o servidor recusar, volta ao estado real. */
+  const commit = useCallback((data: Dataset, request: Req) => {
+    setSnapshot((s) => ({ ...s, data }));
+    enqueue(() => send(request)).catch((e: unknown) => {
+      if (e instanceof ApiError && e.status === 401) logout();
+      else setProblem(e instanceof Error ? e.message : 'Não foi possível salvar a alteração.');
+    });
+  }, [enqueue, logout]);
+
+  /* ---- carga inicial, tempo real e retorno ao app ---- */
+  useEffect(() => {
+    if (!local.token) return;
+    void refresh();
+    let ws: WebSocket | undefined;
+    let closed = false;
+    let retry: ReturnType<typeof setTimeout>;
+    let debounce: ReturnType<typeof setTimeout>;
+    const connect = () => {
+      ws = new WebSocket(wsUrl(local.token!));
+      ws.onmessage = () => {
+        clearTimeout(debounce);
+        // com gravações pendentes o refresh vem no fim da fila
+        debounce = setTimeout(() => { if (pending.current === 0) void refresh(); }, 150);
       };
-      setState((s) => ({
-        ...s,
-        data: { ...s.data, clients, orders: [...s.data.orders, order] },
-        papers: s.papers.map((p) => (p.id === id ? { ...p, status: 'imported', values: v, orderId, importedAt: new Date().toISOString() } : p)),
-      }));
-      return orderId;
-    },
-    saveBoxes: (orderId, boxes, gas) => patch((d) => ({
-      ...d,
-      orders: d.orders.map((o) => o.id !== orderId ? o : {
-        ...o,
-        boxes: boxes.map((b) => b.code),
-        boxDetails: Object.fromEntries(boxes.map((b) => [b.code, { type: b.type, location: b.location }])),
-        cold: boxes.filter((b) => b.type === 'cold').length,
-        frozen: boxes.filter((b) => b.type === 'frozen').length,
-        gas,
-        // entrega já em carga/rota mantém o status; a conferência detecta a mudança de volumes
-        status: o.routeId != null ? o.status : boxes.length ? 'ready' : 'awaiting',
-        history: [...o.history, { label: boxes.length ? `${boxes.length} caixa(s) identificada(s)` : 'Caixas ainda não identificadas', time: now(), actor: 'Atendente' }],
-      }),
-    })),
-    createRoute: (orderIds, vehicleId, departure, driverId = null) => {
-      let id = 0;
-      patch((d) => {
-        id = Math.max(1000, ...d.routes.map((r) => r.id)) + 1;
-        const route: Route = { id, vehicleId, driverId, orders: orderIds, status: 'loading', departure: departure || 'A definir', created: now(), checked: {} };
-        return {
-          ...d,
-          routes: [...d.routes, route],
-          orders: d.orders.map((o) => orderIds.includes(o.id)
-            ? { ...o, status: 'loading', routeId: id, history: [...o.history, { label: `Romaneio #${id} em conferência`, time: now(), actor: 'Expedição' }] }
-            : o),
-        };
-      });
-      return id;
-    },
-    setChecked: (routeId, keys, value) => patch((d) => setChecks(d, routeId, keys, value, now(), state.role ? ROLE_LABELS[state.role] : "Expedição")),
-    confirmOrder: (routeId, orderId) => {
-      const r = confirmOrder(state.data, routeId, orderId);
-      if (r.ok) setState((s) => ({ ...s, data: r.data }));
-      return r.ok ? null : r.error;
-    },
-    syncConference: (routeId) => setState((s) => {
-      const data = syncSignatures(s.data, routeId);
-      return data === s.data ? s : { ...s, data };
-    }),
-    releaseRoute: (routeId) => {
-      const r = releaseTrip(state.data, routeId, now());
-      if (r.ok) setState((s) => ({ ...s, data: r.data }));
-      return r.ok ? null : r.error;
-    },
-    discardRoute: (routeId) => patch((d) => {
-      const r = d.routes.find((x) => x.id === routeId);
-      if (!r || r.status !== 'loading') return d;
-      return {
-        ...d,
-        routes: d.routes.filter((x) => x.id !== routeId),
-        orders: d.orders.map((o) => r.orders.includes(o.id)
-          ? { ...o, status: 'ready', routeId: null, history: [...o.history, { label: `Carga #${r.id} desfeita`, time: now(), actor: 'Expedição' }] }
-          : o),
-      };
-    }),
-    change: (fn) => {
-      const r = fn(state.data);
-      if (r.ok) setState((s) => ({ ...s, data: r.data }));
-      return r.ok ? null : r.error;
-    },
-    retryNotice: (id) => {
-      const r = retryNotice(state.data, id, now());
+      ws.onclose = () => { if (!closed) retry = setTimeout(connect, 3000); };
+    };
+    connect();
+    const onVisible = () => { if (document.visibilityState === 'visible' && pending.current === 0) void refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { closed = true; clearTimeout(retry); clearTimeout(debounce); ws?.close(); document.removeEventListener('visibilitychange', onVisible); };
+  }, [local.token, refresh]);
+
+  const value = useMemo<Store>(() => {
+    const { data, papers } = snapshot;
+    const actor = local.user?.name ?? 'Equipe';
+    const admin = local.user?.role === 'gestao';
+
+    /** Aplica a regra localmente (mesma função do servidor); se passar, grava. */
+    const rule = (r: TripResult, request: Req): string | null => {
       if (!r.ok) return r.error;
-      setState((s) => ({ ...s, data: r.data }));
-      setTimeout(() => patch((d) => settleNotice(d, id)), 650);
+      commit(r.data, request);
       return null;
-    },
-    setDriver: (driverId) => setState((s) => ({ ...s, driverId })),
-    startRoute: (routeId) => {
-      const r = startTrip(state.data, routeId, state.driverId, now());
-      if (r.ok) setState((s) => ({ ...s, data: r.data }));
-      return r.ok ? null : r.error;
-    },
-    finishStop: (orderId, outcome) => {
-      const r = closeStop(state.data, orderId, state.driverId, state.role === 'gestao', now(), outcome);
-      if (r.ok) setState((s) => ({ ...s, data: r.data }));
-      return r.ok ? null : r.error;
-    },
-  }), [state, patch]);
+    };
+    const queued = async <T,>(request: Req): Promise<T> => enqueue(() => send(request) as Promise<T>);
+
+    return {
+      role: local.user?.role ?? null,
+      user: local.user,
+      driverId: local.driverId,
+      data, papers,
+      draft: local.draft,
+      plan: local.plan,
+      connection, problem,
+      clearProblem: () => setProblem(null),
+      refresh,
+      login: async (email, password) => {
+        try {
+          const { token, user } = await apiLogin(email, password);
+          setToken(token);
+          setConnection('loading');
+          setLocal((s) => ({ ...s, token, user, driverId: user.driverId ?? s.driverId }));
+          return null;
+        } catch (e) {
+          return e instanceof Error ? e.message : 'Não foi possível entrar.';
+        }
+      },
+      logout,
+      saveDraft: (form) => setLocal((s) => (JSON.stringify(s.draft) === JSON.stringify(form) ? s : { ...s, draft: form })),
+      setPlan: (plan) => setLocal((s) => ({ ...s, plan })),
+      setDriver: (driverId) => setLocal((s) => ({ ...s, driverId })),
+
+      createOrder: async (form) => (await queued<{ orderId: number }>({ method: 'POST', path: '/orders', body: form })).orderId,
+      saveBoxes: (orderId, boxes, gas) => {
+        const r = saveBoxesLocal(data, orderId, boxes, gas, clockNow(), actor);
+        return rule(r, { method: 'PUT', path: `/orders/${orderId}/boxes`, body: { boxes, gas } });
+      },
+
+      addPaper: async (paper, status = 'captured') => {
+        const body = { sheetNumber: paper.sheetNumber, mode: paper.mode, photo: paper.photo, photoName: paper.photoName, values: paper.values, status };
+        return (await queued<{ id: string }>({ method: 'POST', path: '/papers', body })).id;
+      },
+      updatePaper: (id, patch) => {
+        setSnapshot((s) => ({ ...s, papers: updatePaperLocal(s.papers, id, patch) }));
+        enqueue(() => send({ method: 'PATCH', path: `/papers/${id}`, body: patch })).catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'Falha ao salvar a ficha.'));
+      },
+      deletePaper: (id) => {
+        setSnapshot((s) => ({ ...s, papers: deletePaperLocal(s.papers, id) }));
+        enqueue(() => send({ method: 'DELETE', path: `/papers/${id}` })).catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'Falha ao excluir a ficha.'));
+      },
+      importPaper: async (id, values) => {
+        if (!papers.some((p) => p.id === id && p.status !== 'imported')) return null;
+        return (await queued<{ orderId: number }>({ method: 'POST', path: `/papers/${id}/import`, body: values })).orderId;
+      },
+
+      createRoute: async (orderIds, vehicleId, departure, driverId = null) =>
+        (await queued<{ routeId: number }>({ method: 'POST', path: '/routes', body: { orderIds, vehicleId, departure, driverId } })).routeId,
+      setChecked: (routeId, keys, value) => {
+        const next = setChecks(data, routeId, keys, value, clockNow().time, actor);
+        if (next !== data) commit(next, { method: 'POST', path: `/routes/${routeId}/checks`, body: { keys, value } });
+      },
+      confirmOrder: (routeId, orderId) => rule(confirmOrder(data, routeId, orderId), { method: 'POST', path: `/routes/${routeId}/orders/${orderId}/confirm` }),
+      syncConference: (routeId) => {
+        const next = syncSignatures(data, routeId);
+        if (next !== data) commit(next, { method: 'POST', path: `/routes/${routeId}/sync` });
+      },
+      releaseRoute: (routeId) => rule(releaseTrip(data, routeId, clockNow().time), { method: 'POST', path: `/routes/${routeId}/release` }),
+      discardRoute: (routeId) => {
+        const r = discardRouteLocal(data, routeId, clockNow(), actor);
+        if (r.ok) commit(r.data, { method: 'DELETE', path: `/routes/${routeId}` });
+        else setProblem(r.error);
+      },
+
+      change: (fn, request) => rule(fn(data), request),
+      retryNotice: (id) => rule(retryNotice(data, id, clockNow().time), { method: 'POST', path: `/notifications/${id}/retry` }),
+      startRoute: (routeId) => rule(
+        startTrip(data, routeId, local.driverId, clockNow().time),
+        { method: 'POST', path: `/routes/${routeId}/start`, body: admin ? { driverId: local.driverId } : {} },
+      ),
+      finishStop: (orderId, outcome) => rule(
+        closeStop(data, orderId, local.driverId, admin, clockNow().time, outcome),
+        { method: 'POST', path: `/orders/${orderId}/stop`, body: outcome },
+      ),
+    };
+  }, [snapshot, local, connection, problem, commit, enqueue, refresh, logout]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
-

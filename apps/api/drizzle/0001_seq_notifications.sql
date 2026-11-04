@@ -1,0 +1,1 @@
+ALTER TABLE "notifications" ADD COLUMN "seq" bigint NOT NULL;

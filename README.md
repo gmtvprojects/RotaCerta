@@ -16,9 +16,10 @@ Detalhes em [docs/funcionalidades.md](docs/funcionalidades.md).
 ## Estrutura (monorepo)
 ```
 apps/web           app web (Vite + React + TS): todos os perfis, dados fixos por enquanto
-packages/domain    tipos, papéis, permissões, status e dados fixos (seed)
+apps/api           API (Fastify + PostgreSQL + Drizzle): auth por perfil, regras, WebSocket
+packages/domain    regras de negócio puras, tipos, papéis, permissões e dados fixos (seed)
 reference/         demo original (somente referência, não faz parte do build)
-docs/              documentação
+docs/              documentação (arquitetura e padrões em docs/arquitetura.md)
 ```
 
 ## Branches
@@ -35,8 +36,11 @@ Fluxo: `feature/*` → `dev` → `hml` → `prod`, sempre por Pull Request.
 pnpm install
 pnpm typecheck
 pnpm --filter @rotacerta/web dev   # http://localhost:5173
+pnpm test                                # testes da API (sem Docker)
 pnpm demo   # abre o demo de referência
 ```
+
+Para rodar a API com banco, veja [docs/arquitetura.md](docs/arquitetura.md#6-rodando-localmente).
 
 ## Demo de referência
 `reference/demo-original` é uma cópia do protótipo estático https://thomaslouzano.github.io/rotacerta-demo/. Serve de especificação visual e de fluxo; os dados e o WhatsApp são simulados.

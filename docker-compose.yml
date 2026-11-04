@@ -1,0 +1,14 @@
+# Infraestrutura local de desenvolvimento (Postgres). A API roda com `pnpm --filter @rotacerta/api dev`.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rotacerta
+      POSTGRES_PASSWORD: rotacerta
+      POSTGRES_DB: rotacerta
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:

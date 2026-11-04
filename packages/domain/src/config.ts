@@ -62,6 +62,13 @@ export function retryNotice(d: Dataset, id: string, time: string): TripResult {
   return ok({ ...d, notifications: d.notifications.map((x) => (x.id === id ? { ...x, status: 'queued', reason: '', created: time } : x)) });
 }
 
+/** O provedor recusou o aviso: marca como falha com o motivo. */
+export function failNotice(d: Dataset, id: string, reason: string): Dataset {
+  const n = d.notifications.find((x) => x.id === id);
+  if (!n || n.status !== 'queued') return d;
+  return { ...d, notifications: d.notifications.map((x) => (x.id === id ? { ...x, status: 'failed', reason } : x)) };
+}
+
 export function settleNotice(d: Dataset, id: string): Dataset {
   const n = d.notifications.find((x) => x.id === id);
   if (!n || n.status !== 'queued') return d;

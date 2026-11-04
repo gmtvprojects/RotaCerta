@@ -16,3 +16,5 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm --filter @rotacerta/api build

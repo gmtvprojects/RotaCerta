@@ -54,16 +54,20 @@ export function FichaInicio() {
     if (file.size > MAX_BYTES) { setError('A foto passa de 12 MB. Escolha uma menor.'); return; }
     try {
       const photo = await shrink(file);
-      const id = addPaper({ sheetNumber: nextNumber(papers), mode: 'photo', photo, photoName: file.name, values: blankPaperValues() });
+      const id = await addPaper({ sheetNumber: nextNumber(papers), mode: 'photo', photo, photoName: file.name, values: blankPaperValues() });
       navigate(`/atendimento/ficha/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao ler a foto.');
     }
   };
 
-  const useExample = () => {
-    const id = addPaper({ sheetNumber: EXAMPLE_SHEET_NUMBER, mode: 'example', values: examplePaperValues() });
-    navigate(`/atendimento/ficha/${id}`);
+  const useExample = async () => {
+    try {
+      const id = await addPaper({ sheetNumber: EXAMPLE_SHEET_NUMBER, mode: 'example', values: examplePaperValues() });
+      navigate(`/atendimento/ficha/${id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível criar a ficha.');
+    }
   };
 
   return (
@@ -149,8 +153,9 @@ export function FichaRevisao() {
     if (clean.some((b) => b.type !== 'ambient' && !b.location.trim())) return setError('Informe a câmara e a posição das caixas do frio.');
     if (!v.volumesReady) return setError('Confirme que conferiu a identificação de todos os volumes.');
     setError('');
-    const id = importPaper(paper.id, { ...v, boxes: clean });
-    if (id != null) navigate(`/atendimento/concluido/${id}`);
+    importPaper(paper.id, { ...v, boxes: clean })
+      .then((id) => { if (id != null) navigate(`/atendimento/concluido/${id}`); })
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Não foi possível cadastrar a entrega.'));
   };
 
   const hood = data.neighborhoods;

@@ -193,3 +193,6 @@ textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); bord
 @media print { .bottom-nav, .tour-bar { display: none !important; } }
 
 .stops li { align-items: center; } .stops li .pill { flex: none; align-self: center; height: fit-content; text-align: center; }
+
+.banner { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 10px 14px; margin-bottom: 12px; border-radius: 10px; background: #fdecec; border: 1px solid #f3b8b8; }
+.banner button { flex: none; }

@@ -6,3 +6,4 @@ export * from './seed';
 export * from './trip';
 export * from './conference';
 export * from './config';
+export * from './commands';
