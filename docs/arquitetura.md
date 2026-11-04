@@ -118,7 +118,8 @@ cp apps/api/.env.example apps/api/.env   # ajuste JWT_SECRET e SEED_PASSWORD
 pnpm --filter @rotacerta/api db:migrate
 pnpm --filter @rotacerta/api db:seed     # dados fictícios + 4 usuários (um por perfil)
 pnpm --filter @rotacerta/api dev         # http://localhost:3333
-pnpm --filter @rotacerta/api test        # não precisa de Docker
+pnpm --filter @rotacerta/api test        # não precisa de Docker (Postgres em memória)
+TEST_DATABASE_URL=postgres://rotacerta:rotacerta@localhost:5432/postgres pnpm --filter @rotacerta/api test:pg   # mesma suíte no Postgres real
 ```
 
 ### 6.1 Web conectado à API

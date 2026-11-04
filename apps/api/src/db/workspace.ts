@@ -34,11 +34,17 @@ const byId = <T extends { id: number }>(a: T, b: T) => a.id - b.id;
 
 /** Lê tudo o que as regras do domínio precisam para decidir. */
 export async function loadWorkspace(db: Db): Promise<Workspace> {
-  const [zs, ns, vs, ds, deps, cs, rs, os, nts, ps] = await Promise.all([
-    db.select().from(t.zones), db.select().from(t.neighborhoods), db.select().from(t.vehicles), db.select().from(t.drivers),
-    db.select().from(t.departures), db.select().from(t.clients), db.select().from(t.routes), db.select().from(t.orders),
-    db.select().from(t.notifications).orderBy(desc(t.notifications.seq)), db.select().from(t.paperForms),
-  ]);
+  // em sequência: dentro de uma transação todas as consultas usam a mesma conexão
+  const zs = await db.select().from(t.zones);
+  const ns = await db.select().from(t.neighborhoods);
+  const vs = await db.select().from(t.vehicles);
+  const ds = await db.select().from(t.drivers);
+  const deps = await db.select().from(t.departures);
+  const cs = await db.select().from(t.clients);
+  const rs = await db.select().from(t.routes);
+  const os = await db.select().from(t.orders);
+  const nts = await db.select().from(t.notifications).orderBy(desc(t.notifications.seq));
+  const ps = await db.select().from(t.paperForms);
   const data: Dataset = {
     zones: zs.map((z) => z.name),
     neighborhoods: ns,

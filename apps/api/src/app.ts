@@ -2,7 +2,7 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import type { Role } from '@rotacerta/domain';
 import { verifyPassword } from './auth/password';
@@ -36,7 +36,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const { config, db } = deps;
   const events = deps.events ?? new EventBus();
   const sender = deps.sender ?? new SimulatedSender();
-  const app = Fastify({ logger: config.NODE_ENV === 'test' ? false : { level: 'info' }, bodyLimit: 2 * 1024 * 1024 });
+  const app = Fastify({ logger: config.NODE_ENV === 'test' ? false : {
+      level: 'info',
+      // o token do WebSocket vai na URL: nunca registrar a query string
+      serializers: { req: (req) => ({ method: req.method, url: req.url?.split('?')[0], remoteAddress: req.ip }) },
+    }, bodyLimit: 2 * 1024 * 1024 });
 
   await app.register(cors, { origin: config.CORS_ORIGIN.split(',').map((s) => s.trim()), credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] });
   await app.register(jwt, { secret: config.JWT_SECRET, sign: { expiresIn: config.JWT_EXPIRES_IN } });
@@ -56,7 +60,17 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     return out.result ?? { ok: true };
   };
 
+  /** Processo vivo. */
   app.get('/health', async () => ({ status: 'ok' }));
+  /** Pronto para receber tráfego: o banco responde. Usar como health check do balanceador. */
+  app.get('/ready', async (_req, reply) => {
+    try {
+      await db.execute(sql`select 1`);
+      return { status: 'ready' };
+    } catch {
+      return reply.code(503).send({ status: 'database_unavailable' });
+    }
+  });
 
   /* ---------- autenticação ---------- */
   app.post('/api/auth/login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {

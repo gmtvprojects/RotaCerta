@@ -1,7 +1,9 @@
 import { createSeed } from '@rotacerta/domain';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { loadWorkspace } from '../src/db/workspace';
-import { createTestDb } from './helpers';
+import { closeTestDbs, createTestDb } from './helpers';
+
+afterAll(closeTestDbs);
 
 describe('persistência do domínio', () => {
   it('o que sai do banco é idêntico ao seed do domínio', async () => {

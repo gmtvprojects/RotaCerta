@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import { beforeAll, describe, expect, it } from 'vitest';
-import { createTestApp, loginAs, PASSWORD } from './helpers';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { closeTestDbs, createTestApp, loginAs, PASSWORD } from './helpers';
 
 let app: FastifyInstance;
 beforeAll(async () => { ({ app } = await createTestApp()); });
+afterAll(closeTestDbs);
 
 type Headers = Record<string, string>;
 const call = (method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, headers: Headers, payload?: unknown) =>
