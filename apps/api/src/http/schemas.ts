@@ -37,3 +37,16 @@ export const neighborhood = z.object({ name: text(80), zone: text(80) });
 export const vehicle = z.object({ name: text(80), plate: text(20), capacity: z.number().int() });
 export const driver = z.object({ name: text(120) });
 export const departure = z.object({ time: text(5) });
+
+const password = z.string().min(10, 'A senha precisa ter ao menos 10 caracteres.').max(200);
+const role = z.enum(['gestao', 'atendente', 'expedicao', 'motorista']);
+export const passwordOnly = z.object({ password });
+export const changePassword = z.object({ current: z.string().min(1).max(200), password });
+export const userCreate = z.object({
+  name: z.string().trim().min(3, 'Informe o nome completo.').max(120), email: z.email('Informe um e-mail válido.').max(200),
+  password, role, driverId: z.number().int().nullable().default(null),
+});
+export const userPatch = z.object({
+  name: z.string().trim().min(3, 'Informe o nome completo.').max(120).optional(), role: role.optional(),
+  driverId: z.number().int().nullable().optional(), active: z.boolean().optional(),
+});

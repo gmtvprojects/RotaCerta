@@ -3,8 +3,9 @@ import { addDeparture, addDriver, addNeighborhood, addZone, removeDeparture, sav
 import { useStore } from '../app/store';
 import type { Req } from '../app/api';
 import { Header, Modal } from './ui';
+import { Auditoria, Usuarios } from './Usuarios';
 
-const TABS = ['Bairros e zonas', 'Veículos', 'Equipe', 'Horários de saída', 'WhatsApp'] as const;
+const TABS = ['Bairros e zonas', 'Veículos', 'Equipe', 'Usuários', 'Auditoria', 'Horários de saída', 'WhatsApp'] as const;
 type Tab = (typeof TABS)[number];
 
 type Form =
@@ -52,11 +53,14 @@ export function Configuracoes() {
         </section>
       )}
 
+      {tab === 'Usuários' && <Usuarios />}
+      {tab === 'Auditoria' && <Auditoria />}
+
       {tab === 'Equipe' && (
         <section className="card">
-          <div className="card-head"><h2>Motoristas e acesso demonstrativo</h2><button type="button" className="primary" onClick={() => setForm({ kind: 'driver' })}>+ Motorista</button></div>
-          <Table head={['Nome', 'Função', 'Status']} rows={data.drivers.map((d) => [d.name, 'Motorista', <span key="s" className="pill green">Ativo na demonstração</span>])} />
-          <p className="muted small">Perfis: Gestão, Atendente, Expedição e Motorista. Os perfis não implementam autenticação ou segurança de produção.</p>
+          <div className="card-head"><h2>Motoristas</h2><button type="button" className="primary" onClick={() => setForm({ kind: 'driver' })}>+ Motorista</button></div>
+          <Table head={['Nome', 'Função', 'Status']} rows={data.drivers.map((d) => [d.name, 'Motorista', <span key="s" className="pill green">Cadastrado</span>])} />
+          <p className="muted small">O cadastro de motorista é a ficha da operação; para a pessoa entrar no sistema, crie o usuário na aba Usuários.</p>
         </section>
       )}
 

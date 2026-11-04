@@ -15,6 +15,20 @@
       "when": 1793825799988,
       "tag": "0001_seq_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793828682280,
+      "tag": "0002_sessions_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793828789288,
+      "tag": "0003_rotated_at",
+      "breakpoints": true
     }
   ]
 }

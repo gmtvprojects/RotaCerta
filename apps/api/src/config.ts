@@ -5,8 +5,16 @@ const schema = z.object({
   PORT: z.coerce.number().int().default(3333),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET precisa ter ao menos 32 caracteres'),
-  /** Validade do token de acesso (um turno de trabalho). */
-  JWT_EXPIRES_IN: z.string().default('12h'),
+  /** Validade do token de acesso. Curto: a renovação é feita pelo cookie de sessão. */
+  JWT_EXPIRES_IN: z.string().default('15m'),
+  /** Dias que uma sessão sobrevive sem uso (renovada a cada acesso). */
+  REFRESH_DAYS: z.coerce.number().int().min(1).max(90).default(14),
+  /** `none` quando web e API ficam em domínios diferentes (exige HTTPS); `lax` no mesmo site (ex.: localhost). */
+  COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
+  /** Tentativas de login por minuto e por IP. */
+  LOGIN_RATE_MAX: z.coerce.number().int().min(1).default(10),
+  /** Cookie só por HTTPS. Padrão: ligado em produção. */
+  COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   /** Origens permitidas no CORS, separadas por vírgula. */
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   APP_TZ: z.string().default('America/Sao_Paulo'),

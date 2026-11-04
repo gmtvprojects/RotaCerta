@@ -1,19 +1,21 @@
+import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import type { Role } from '@rotacerta/domain';
-import { verifyPassword } from './auth/password';
 import { storeClock } from './clock';
 import type { Config } from './config';
-import { schema, type Db } from './db/client';
+import { audit } from './db/audit';
+import type { Db } from './db/client';
 import { loadWorkspace } from './db/workspace';
 import { mutate, type Mutation } from './db/unit-of-work';
 import type { AuthUser } from './http/context';
-import * as body from './http/schemas';
+import { registerAuthRoutes } from './http/auth';
 import { registerBusinessRoutes } from './http/business';
+import { scopeFor } from './privacy';
 import { EventBus } from './realtime/events';
 import { type NotificationSender, SimulatedSender } from './notifications/sender';
 
@@ -43,12 +45,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     }, bodyLimit: 2 * 1024 * 1024 });
 
   await app.register(cors, { origin: config.CORS_ORIGIN.split(',').map((s) => s.trim()), credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] });
+  await app.register(cookie);
   await app.register(jwt, { secret: config.JWT_SECRET, sign: { expiresIn: config.JWT_EXPIRES_IN } });
   await app.register(rateLimit, { global: false });
   await app.register(websocket);
 
   const guard: Ctx['guard'] = (roles) => async (req, reply) => {
     try { await req.jwtVerify(); } catch { return reply.code(401).send({ error: 'Sessão inválida ou expirada.' }); }
+    // tickets do WebSocket não servem como token de acesso (não têm perfil)
+    if (!req.user.role) return reply.code(401).send({ error: 'Sessão inválida ou expirada.' });
     if (!roles.includes(req.user.role)) return reply.code(403).send({ error: 'Seu perfil não tem acesso a esta ação.' });
   };
 
@@ -72,37 +77,37 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     }
   });
 
-  /* ---------- autenticação ---------- */
-  app.post('/api/auth/login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const parsed = body.login.safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: 'Informe e-mail e senha.' });
-    const [user] = await db.select().from(schema.users).where(eq(schema.users.email, parsed.data.email.toLowerCase()));
-    // mesma resposta para e-mail inexistente e senha errada
-    const valid = user?.active && await verifyPassword(parsed.data.password, user.passwordHash);
-    if (!user || !valid) return reply.code(401).send({ error: 'E-mail ou senha incorretos.' });
-    const payload: AuthUser = { sub: user.id, name: user.name, role: user.role, driverId: user.driverId };
-    return { token: app.jwt.sign(payload), user: payload };
-  });
-
-  app.get('/api/auth/me', { preHandler: guard(['gestao', 'atendente', 'expedicao', 'motorista']) }, async (req) => req.user);
-
   /* ---------- leitura do estado ---------- */
   app.get('/api/dataset', { preHandler: guard(['gestao', 'atendente', 'expedicao', 'motorista']) }, async (req) => {
     const { data, papers } = await loadWorkspace(db);
-    // fichas de papel guardam dados pessoais e fotos: só quem cadastra vê
-    const seesPapers = req.user.role === 'gestao' || req.user.role === 'atendente';
-    return { data, papers: seesPapers ? papers : [] };
+    return scopeFor({ role: req.user.role, driverId: req.user.driverId }, data, papers);
   });
 
   /* ---------- tempo real ---------- */
   app.get('/api/ws', { websocket: true }, (socket, req) => {
-    const token = (req.query as { token?: string }).token;
-    try { app.jwt.verify(token ?? ''); } catch { socket.close(4401, 'unauthorized'); return; }
+    // ticket de 30 s obtido em POST /api/auth/ws-ticket; o token de acesso nunca vai na URL
+    const ticket = (req.query as { ticket?: string }).ticket;
+    try {
+      const payload = app.jwt.verify<{ purpose?: string }>(ticket ?? '');
+      if (payload.purpose !== 'ws') throw new Error('ticket inválido');
+    } catch { socket.close(4401, 'unauthorized'); return; }
     const off = events.subscribe((e) => socket.send(JSON.stringify(e)));
     socket.on('close', off);
   });
 
+  /* ---------- auditoria das operações ---------- */
+  // toda escrita feita por usuário logado fica registrada (a autenticação e os usuários têm registro próprio, com mais detalhe)
+  // gravada antes de a resposta sair: o cliente só recebe a confirmação depois que o registro existe
+  app.addHook('onSend', async (req, reply, payload) => {
+    const url = req.routeOptions.url ?? '';
+    if (req.method === 'GET' || req.method === 'OPTIONS' || !url.startsWith('/api/') || url.startsWith('/api/auth') || url.startsWith('/api/users')) return payload;
+    if (!req.user?.sub) return payload;
+    await audit(db, { userId: req.user.sub, userName: req.user.name, action: `${req.method} ${url}`, target: JSON.stringify(req.params ?? {}), status: reply.statusCode, ip: req.ip }, req.log);
+    return payload;
+  });
+
   const ctx: Ctx = { app, db, config, events, sender, guard, run };
+  registerAuthRoutes(ctx);
   registerBusinessRoutes(ctx);
   return app;
 }

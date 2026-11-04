@@ -80,7 +80,12 @@ Perfis: `gestao`, `atendente`, `expedicao`, `motorista`. Cada rota declara quem 
 o perfil vem do JWT. O motorista só age como **ele mesmo** (`driverId` do usuário); a gestão pode agir em nome de outro.
 O front esconde telas por perfil (`ALLOWED_PAGES`), mas **a API é quem garante**.
 
-### 3.7 Configuração (12-factor)
+### 3.7 Sessão, privacidade e auditoria
+- **Sessão:** ver a seção 5. O cookie é `SameSite=Lax` por padrão; com web e API em domínios diferentes (Railway), use `COOKIE_SAMESITE=none` + HTTPS. As rotas que usam o cookie (`/refresh`, `/logout`) exigem o cabeçalho `x-requested-with: rotacerta` (defesa contra CSRF).
+- **Privacidade por perfil:** `apps/api/src/privacy.ts` decide o que cada perfil lê; o filtro roda no servidor.
+- **Auditoria:** toda escrita de usuário logado é gravada **antes** de a resposta sair (`audit_log`), com quem, ação, parâmetros, resultado e IP; login (inclusive falho), logout e gestão de usuários têm eventos próprios. Nunca se grava corpo de requisição, senha nem token.
+
+### 3.8 Configuração (12-factor)
 Tudo por variáveis de ambiente, validadas na subida (`src/config.ts`); nada específico de plataforma no código.
 Segredos nunca entram no repositório (`.env` ignorado; usar `.env.example` como modelo).
 
@@ -96,12 +101,16 @@ Segredos nunca entram no repositório (`.env` ignorado; usar `.env.example` como
 
 ## 5. API atual
 
-Autenticação por e-mail e senha (hash `scrypt`), JWT de 12 h, login limitado a 10 tentativas por minuto.
+Autenticação por e-mail e senha (hash `scrypt`, mínimo de 10 caracteres). Login limitado a 10 tentativas por minuto por IP (`LOGIN_RATE_MAX`).
+
+**Sessão (seção 3.8):** token de acesso JWT de 15 min, só em memória no navegador; sessão longa (14 dias, renovada a cada uso) em cookie `httpOnly` `rc_refresh` com rotação a cada renovação. Reuso de um token já trocado revoga toda a cadeia; há tolerância de 10 s para duas abas renovando juntas. Logout, troca de senha, desativação e mudança de perfil derrubam as sessões. O WebSocket abre com um ticket de 30 s (`POST /api/auth/ws-ticket`), nunca com o token na URL.
 
 | Método e rota | Perfis | O que faz |
 |---|---|---|
-| `POST /api/auth/login`, `GET /api/auth/me` | todos | Sessão |
-| `GET /api/dataset` | todos | Estado completo (fichas de papel só para atendente/gestão) |
+| `POST /api/auth/login`, `/refresh`, `/logout`, `/ws-ticket`, `/password`; `GET /api/auth/me` | todos | Sessão e troca da própria senha |
+| `GET/POST /api/users`, `PATCH /api/users/:id`, `POST /api/users/:id/password` | gestão | Usuários: criar, mudar perfil, desativar, redefinir senha |
+| `GET /api/audit` | gestão | Trilha de auditoria |
+| `GET /api/dataset` | todos | Estado, filtrado por perfil: o motorista vê só as rotas dele (e as liberadas sem dono); fichas de papel só atendente/gestão |
 | `GET /api/ws?token=` | todos | WebSocket: avisa `changed` quando algo muda |
 | `POST /api/orders`, `PUT /api/orders/:id/boxes` | gestão, atendente, expedição | Cadastrar entrega, identificar caixas |
 | `POST/PATCH/DELETE /api/papers`, `POST /api/papers/:id/import` | gestão, atendente | Fichas de papel |
@@ -151,11 +160,11 @@ arquivos fora do disco do container (API compatível com S3); estado compartilha
 
 ## 8. Pendências conhecidas (próximos passos)
 
-1. ~~Conectar o web à API~~ **feito**: login real, dados do servidor, atualização por WebSocket (seção 6.1). Resta: modo offline (hoje o app precisa de internet) e guardar o token em cookie httpOnly em vez de localStorage.
+1. ~~Conectar o web à API~~ **feito** (seção 6.1). Resta: modo offline (hoje o app precisa de internet).
 2. **GPS do motorista**: tabela de posições, endpoint e canal em tempo real; app Expo com rastreamento em segundo plano.
 3. **WhatsApp real**: implementar `NotificationSender` com a Cloud API (templates aprovados) e fila com reenvio; hoje o domínio já marca o aviso como entregue na hora (simulado).
-4. **Sessão**: refresh token e revogação; gestão de usuários (hoje só o seed cria usuários).
+4. ~~Sessão e usuários~~ **feito**. Resta: recuperação de senha por e-mail e bloqueio por conta após muitas falhas (hoje o limite é por IP).
 5. **Escala**: Redis pub/sub no `EventBus` para várias instâncias; limitar o estado carregado por escrita (ver 3.2).
-6. **Privacidade**: o motorista recebe hoje o estado completo; restringir às suas rotas.
+6. ~~Privacidade do motorista~~ **feito**. Resta: rever o que a expedição precisa ver de cada cliente.
 7. **Rascunho e planejamento** (`draft`, `plan`) continuam locais ao navegador; avaliar persistir no servidor.
 8. **Infra como código** (Terraform/CDK) só na fase AWS.

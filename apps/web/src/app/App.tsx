@@ -56,6 +56,9 @@ export function App() {
   // Ao navegar, o menu do celular fecha e a tela volta ao topo.
   useEffect(() => { setMenuOpen(false); window.scrollTo(0, 0); }, [pathname]);
 
+  if (!role && connection === 'loading') {
+    return <div className="login"><section className="login-card"><div className="brand"><strong>RotaCerta</strong><small>Gestão de entregas</small></div><p className="muted">Abrindo…</p></section></div>;
+  }
   if (!role) return <Login />;
   if (connection !== 'ready') {
     return (

@@ -1,4 +1,5 @@
 import { ALLOWED_PAGES, ROLE_DESCRIPTIONS, ROLE_LABELS, type Page, type Role } from '@rotacerta/domain';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../app/store';
 import { TOURS, useTour } from '../app/tour';
@@ -17,7 +18,10 @@ const AREA: Partial<Record<Page, string>> = {
 const ROLES: Role[] = ['atendente', 'expedicao', 'motorista', 'gestao'];
 
 export function Perfil() {
-  const { role, user, data, driverId, logout } = useStore();
+  const { role, user, data, driverId, logout, changePassword } = useStore();
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const tour = useTour();
   const navigate = useNavigate();
   if (!role) return null;
@@ -39,6 +43,16 @@ export function Perfil() {
         <small className="muted">Áreas liberadas</small>
         <div className="chips" style={{ marginTop: 6 }}>{areas.map((a) => <span className="pill blue" key={a}>{a}</span>)}</div>
         <p className="muted small">Seu acesso é definido pelo perfil do seu usuário.</p>
+      </section>
+
+      <section className="card">
+        <div className="card-head"><h2>Alterar minha senha</h2></div>
+        <form onSubmit={async (e) => { e.preventDefault(); const err = await changePassword(current, next); setPwMsg(err ? { ok: false, text: err } : { ok: true, text: 'Senha alterada. Suas outras sessões foram encerradas.' }); if (!err) { setCurrent(''); setNext(''); } }}>
+          <label className="field">Senha atual<input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required /></label>
+          <label className="field">Nova senha (mínimo 10 caracteres)<input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} required minLength={10} /></label>
+          {pwMsg && <p className={pwMsg.ok ? 'muted' : 'error'} role="status">{pwMsg.text}</p>}
+          <button type="submit">Alterar senha</button>
+        </form>
       </section>
 
       <section className="card">

@@ -1,4 +1,4 @@
-import { bigint, boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { bigint, boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { BoxInfo, OrderEvent, PaperValues, Role } from '@rotacerta/domain';
 
 /** Colunas simples espelham os tipos de `@rotacerta/domain`; estruturas aninhadas ficam em jsonb. */
@@ -121,3 +121,31 @@ export const users = pgTable('users', {
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex('users_email_idx').on(t.email)]);
+
+/** Sessões renováveis. Só o hash do token fica no banco; `familyId` liga a cadeia de renovações de um login. */
+export const refreshTokens = pgTable('refresh_tokens', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  familyId: text('family_id').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  /** Preenchido só quando o token foi trocado por rotação (diferente de revogado por logout ou reuso). */
+  rotatedAt: timestamp('rotated_at', { withTimezone: true }),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex('refresh_tokens_hash_idx').on(t.tokenHash), index('refresh_tokens_user_idx').on(t.userId)]);
+
+/** Trilha de auditoria: quem fez o quê e quando. Sem corpo de requisição (evita guardar senha e dado pessoal). */
+export const auditLog = pgTable('audit_log', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  /** Sem chave estrangeira: o histórico sobrevive à remoção do usuário. */
+  userId: integer('user_id'),
+  userName: text('user_name'),
+  action: text('action').notNull(),
+  target: text('target'),
+  status: integer('status'),
+  detail: jsonb('detail').$type<Record<string, unknown>>(),
+  ip: text('ip'),
+}, (t) => [index('audit_log_at_idx').on(t.at)]);

@@ -4,24 +4,26 @@ import {
   releaseTrip, retryNotice, saveBoxes as saveBoxesLocal, setChecks, startTrip, syncSignatures, updatePaper as updatePaperLocal,
   type BoxInput, type Clock, type Dataset, type DeliveryForm, type PaperForm, type PaperValues, type PlanDraft, type Role, type StopOutcome, type TripResult,
 } from '@rotacerta/domain';
-import { ApiError, fetchSnapshot, login as apiLogin, send, setToken, wsUrl, type Req, type SessionUser } from './api';
+import { ApiError, call, fetchSnapshot, login as apiLogin, logout as apiLogout, openSocket, renewSession, send, type Req, type SessionUser } from './api';
 
-/** Estado que fica só neste aparelho: sessão e rascunhos. Os dados da operação vêm do servidor. */
-const KEY = 'rotacerta:v3';
+/** Estado que fica só neste aparelho: rascunhos. Sessão (cookie httpOnly) e dados da operação vêm do servidor. */
+const KEY = 'rotacerta:v4';
 
-interface Local { token: string | null; user: SessionUser | null; driverId: number; draft: DeliveryForm | null; plan: PlanDraft | null }
+interface Local { driverId: number; draft: DeliveryForm | null; plan: PlanDraft | null }
 
 const EMPTY_DATA: Dataset = { clients: [], neighborhoods: [], zones: [], vehicles: [], drivers: [], orders: [], routes: [], notifications: [], departures: [] };
 
 function load(): Local {
+  // versões anteriores guardavam o token de acesso aqui: apaga
+  try { localStorage.removeItem('rotacerta:v3'); } catch { /* ignora */ }
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw) as Partial<Local>;
-      return { token: s.token ?? null, user: s.user ?? null, driverId: s.driverId ?? s.user?.driverId ?? 1, draft: s.draft ?? null, plan: s.plan ?? null };
+      return { driverId: s.driverId ?? 1, draft: s.draft ?? null, plan: s.plan ?? null };
     }
-  } catch { /* armazenamento indisponível: segue sem sessão salva */ }
-  return { token: null, user: null, driverId: 1, draft: null, plan: null };
+  } catch { /* armazenamento indisponível: segue sem rascunhos */ }
+  return { driverId: 1, draft: null, plan: null };
 }
 
 export type Connection = 'loading' | 'ready' | 'offline';
@@ -40,6 +42,8 @@ interface Store {
   problem: string | null;
   clearProblem: () => void;
   refresh: () => Promise<void>;
+  /** Troca a própria senha; devolve a mensagem de erro, ou null. */
+  changePassword: (current: string, password: string) => Promise<string | null>;
   /** Entra com e-mail e senha; devolve a mensagem de erro, ou null. */
   login: (email: string, password: string) => Promise<string | null>;
   logout: () => void;
@@ -94,26 +98,39 @@ const clockNow = (): Clock => {
 };
 
 const initial = load();
-setToken(initial.token);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [local, setLocal] = useState<Local>(initial);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [snapshot, setSnapshot] = useState<{ data: Dataset; papers: PaperForm[] }>({ data: EMPTY_DATA, papers: [] });
-  const [connection, setConnection] = useState<Connection>(initial.token ? 'loading' : 'ready');
+  // começa em 'loading' enquanto tenta retomar a sessão pelo cookie
+  const [connection, setConnection] = useState<Connection>('loading');
   const [problem, setProblem] = useState<string | null>(null);
 
-  const tokenRef = useRef(local.token);
-  tokenRef.current = local.token;
+  const userRef = useRef<SessionUser | null>(null);
+  userRef.current = user;
 
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(local)); } catch { /* ignora */ }
   }, [local]);
 
-  const logout = useCallback(() => {
-    setToken(null);
+  /** Encerra a sessão aqui; `remote` também a encerra no servidor (logout do usuário, não expiração). */
+  const logout = useCallback((remote = true) => {
+    if (remote) void apiLogout();
+    setUser(null);
     setSnapshot({ data: EMPTY_DATA, papers: [] });
     setConnection('ready');
-    setLocal((s) => ({ ...s, token: null, user: null, plan: null, draft: null }));
+    setLocal((s) => ({ ...s, plan: null, draft: null }));
+  }, []);
+
+  // retoma a sessão ao abrir o app
+  useEffect(() => {
+    let alive = true;
+    renewSession().then((session) => {
+      if (!alive) return;
+      if (session) { setUser(session.user); setLocal((s) => ({ ...s, driverId: session.user.driverId ?? s.driverId })); } else setConnection('ready');
+    }).catch(() => { if (alive) setConnection('offline'); });
+    return () => { alive = false; };
   }, []);
 
   /* ---- fila de gravação: as operações vão ao servidor na ordem em que foram feitas ---- */
@@ -121,13 +138,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const pending = useRef(0);
 
   const refresh = useCallback(async () => {
-    if (!tokenRef.current) return;
+    if (!userRef.current) return;
     try {
       const snap = await fetchSnapshot();
       setSnapshot(snap);
       setConnection('ready');
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) { logout(); return; }
+      if (e instanceof ApiError && e.status === 401) { logout(false); return; }
       setConnection((c) => (c === 'loading' ? 'offline' : c));
       if (e instanceof Error) setProblem(e.message);
     }
@@ -147,21 +164,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const commit = useCallback((data: Dataset, request: Req) => {
     setSnapshot((s) => ({ ...s, data }));
     enqueue(() => send(request)).catch((e: unknown) => {
-      if (e instanceof ApiError && e.status === 401) logout();
+      if (e instanceof ApiError && e.status === 401) logout(false);
       else setProblem(e instanceof Error ? e.message : 'Não foi possível salvar a alteração.');
     });
   }, [enqueue, logout]);
 
   /* ---- carga inicial, tempo real e retorno ao app ---- */
   useEffect(() => {
-    if (!local.token) return;
+    if (!user) return;
     void refresh();
     let ws: WebSocket | undefined;
     let closed = false;
     let retry: ReturnType<typeof setTimeout>;
     let debounce: ReturnType<typeof setTimeout>;
-    const connect = () => {
-      ws = new WebSocket(wsUrl(local.token!));
+    const connect = async () => {
+      try {
+        ws = await openSocket();
+      } catch {
+        if (!closed) retry = setTimeout(connect, 5000);
+        return;
+      }
+      if (closed) { ws.close(); return; }
       ws.onmessage = () => {
         clearTimeout(debounce);
         // com gravações pendentes o refresh vem no fim da fila
@@ -169,16 +192,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       };
       ws.onclose = () => { if (!closed) retry = setTimeout(connect, 3000); };
     };
-    connect();
+    void connect();
     const onVisible = () => { if (document.visibilityState === 'visible' && pending.current === 0) void refresh(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => { closed = true; clearTimeout(retry); clearTimeout(debounce); ws?.close(); document.removeEventListener('visibilitychange', onVisible); };
-  }, [local.token, refresh]);
+  }, [user, refresh]);
 
   const value = useMemo<Store>(() => {
     const { data, papers } = snapshot;
-    const actor = local.user?.name ?? 'Equipe';
-    const admin = local.user?.role === 'gestao';
+    const actor = user?.name ?? 'Equipe';
+    const admin = user?.role === 'gestao';
 
     /** Aplica a regra localmente (mesma função do servidor); se passar, grava. */
     const rule = (r: TripResult, request: Req): string | null => {
@@ -189,8 +212,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const queued = async <T,>(request: Req): Promise<T> => enqueue(() => send(request) as Promise<T>);
 
     return {
-      role: local.user?.role ?? null,
-      user: local.user,
+      role: user?.role ?? null,
+      user,
       driverId: local.driverId,
       data, papers,
       draft: local.draft,
@@ -200,16 +223,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       refresh,
       login: async (email, password) => {
         try {
-          const { token, user } = await apiLogin(email, password);
-          setToken(token);
+          const session = await apiLogin(email, password);
           setConnection('loading');
-          setLocal((s) => ({ ...s, token, user, driverId: user.driverId ?? s.driverId }));
+          setUser(session.user);
+          setLocal((s) => ({ ...s, driverId: session.user.driverId ?? s.driverId }));
           return null;
         } catch (e) {
           return e instanceof Error ? e.message : 'Não foi possível entrar.';
         }
       },
-      logout,
+      logout: () => logout(true),
+      changePassword: async (current, password) => {
+        try { await call('POST', '/auth/password', { current, password }); return null; }
+        catch (e) { return e instanceof Error ? e.message : 'Não foi possível trocar a senha.'; }
+      },
       saveDraft: (form) => setLocal((s) => (JSON.stringify(s.draft) === JSON.stringify(form) ? s : { ...s, draft: form })),
       setPlan: (plan) => setLocal((s) => ({ ...s, plan })),
       setDriver: (driverId) => setLocal((s) => ({ ...s, driverId })),
@@ -266,7 +293,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         { method: 'POST', path: `/orders/${orderId}/stop`, body: outcome },
       ),
     };
-  }, [snapshot, local, connection, problem, commit, enqueue, refresh, logout]);
+  }, [snapshot, local, user, connection, problem, commit, enqueue, refresh, logout]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
