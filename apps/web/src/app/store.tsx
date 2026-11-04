@@ -47,6 +47,8 @@ interface Store {
   /** Recebe cada nova posição de motorista (tempo real). Devolve a função que cancela. */
   subscribeLocations: (fn: (m: LocationMsg) => void) => () => void;
   refresh: () => Promise<void>;
+  /** Executa uma ação no servidor (sem previsão local) e devolve a mensagem de erro, ou null. O estado se atualiza sozinho em seguida. */
+  command: (request: Req) => Promise<string | null>;
   /** Troca a própria senha; devolve a mensagem de erro, ou null. */
   changePassword: (current: string, password: string) => Promise<string | null>;
   /** Entra com e-mail e senha; devolve a mensagem de erro, ou null. */
@@ -245,6 +247,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       },
       logout: () => logout(true),
+      command: async (request) => {
+        try { await enqueue(() => send(request)); return null; }
+        catch (e) {
+          if (e instanceof ApiError && e.status === 401) { logout(false); return 'Sessão expirada. Entre novamente.'; }
+          return e instanceof Error ? e.message : 'Não foi possível concluir a operação.';
+        }
+      },
       changePassword: async (current, password) => {
         try { await call('POST', '/auth/password', { current, password }); return null; }
         catch (e) { return e instanceof Error ? e.message : 'Não foi possível trocar a senha.'; }

@@ -6,7 +6,7 @@ import { Empty, Header, OrderPill } from './ui';
 
 type Tab = 'all' | 'open' | 'done';
 const TABS: [Tab, string][] = [['all', 'Todas'], ['open', 'Em operação'], ['done', 'Encerradas']];
-const isDone = (s: OrderStatus) => s === 'delivered' || s === 'failed';
+const isDone = (s: OrderStatus) => s === 'delivered' || s === 'failed' || s === 'cancelled';
 
 export function Entregas() {
   const { data } = useStore();

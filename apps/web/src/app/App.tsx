@@ -18,6 +18,7 @@ import { Carregamento } from '../pages/Carregamento';
 import { Planejamento } from '../pages/Planejamento';
 import { Perfil } from '../pages/Perfil';
 import { Acompanhamento } from '../pages/Acompanhamento';
+import { Clientes } from '../pages/Clientes';
 
 interface PageDef { page: Page; path: string; label: string; element: JSX.Element; hidden?: boolean }
 
@@ -26,6 +27,7 @@ const PAGES: PageDef[] = [
   { page: 'atendimento', path: '/atendimento', label: 'Atendimento', element: <Atendimento /> },
   { page: 'pendencias', path: '/pendencias', label: 'Continuar atendimento', element: <Pendencias /> },
   { page: 'entregas', path: '/entregas', label: 'Entregas', element: <Entregas /> },
+  { page: 'clientes', path: '/clientes', label: 'Clientes', element: <Clientes /> },
   { page: 'volumes', path: '/volumes', label: 'Volumes e caixas', element: <Volumes /> },
   { page: 'expedicao', path: '/expedicao', label: 'Montar carga', element: <Expedicao /> },
   { page: 'planejamento', path: '/planejamento', label: 'Planejamento', element: <Planejamento />, hidden: true },

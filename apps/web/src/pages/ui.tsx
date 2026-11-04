@@ -12,7 +12,7 @@ export function Header({ title, subtitle, actions }: { title: string; subtitle?:
 
 const ORDER_TONE: Record<Order['status'], string> = {
   draft: 'gray', awaiting: 'amber', ready: 'blue', queued: 'blue', loading: 'amber',
-  released: 'blue', onroute: 'violet', delivered: 'green', failed: 'red',
+  released: 'blue', onroute: 'violet', delivered: 'green', failed: 'red', cancelled: 'gray',
 };
 
 export const OrderPill = ({ status }: { status: Order['status'] }) => (

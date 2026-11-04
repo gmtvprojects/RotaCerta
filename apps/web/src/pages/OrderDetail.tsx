@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { BOX_TYPE_LABELS, canAccess, volumesOf } from '@rotacerta/domain';
 import { useStore } from '../app/store';
+import { OrderActions } from './OrderActions';
 import { Modal, OrderPill } from './ui';
 
 /** Ficha completa de uma entrega: endereço, volumes, romaneio, ficha de origem e histórico. */
@@ -45,6 +46,7 @@ export function OrderDetail({ orderId, onClose }: { orderId: number; onClose: ()
       {o.status === 'failed' && o.occurrence && (
         <div className="banner"><strong>Não entregue: {o.occurrence.reason}</strong>{o.occurrence.notes && <div>{o.occurrence.notes}</div>}</div>
       )}
+      <OrderActions order={o} />
       {o.receiver && <p className="muted small">Recebido por {o.receiver}{o.completed ? ` às ${o.completed}` : ''}.</p>}
 
       {paper && (

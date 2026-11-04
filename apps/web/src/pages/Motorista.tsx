@@ -25,7 +25,7 @@ function AsDriver() {
   return (
     <label className="as-driver">Motorista da demonstração
       <select value={driverId} onChange={(e) => setDriver(Number(e.target.value))}>
-        {data.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+        {data.drivers.filter((d) => d.active !== false).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
       </select>
     </label>
   );

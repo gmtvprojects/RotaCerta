@@ -57,3 +57,22 @@ export const userPatch = z.object({
   name: z.string().trim().min(3, 'Informe o nome completo.').max(120).optional(), role: role.optional(),
   driverId: z.number().int().nullable().optional(), active: z.boolean().optional(),
 });
+
+/* ---------- operações sobre entregas, viagens, clientes e cadastros ---------- */
+export const orderPatch = z.object({
+  name: text(120).optional(), phone: text(30).optional(), neighborhood: text(80).optional(), street: text(160).optional(),
+  number: text(20).optional(), complement: text(80).optional(), reference: text(200).optional(), window: text(30).optional(),
+  notes: text(500).optional(), consent: z.boolean().optional(),
+});
+export const reason = z.object({ reason: text(200) });
+export const requeue = z.object({ window: text(30).optional(), notes: text(500).optional() });
+export const reassign = z.object({ driverId: z.number().int().nullable() });
+export const clientPatch = z.object({
+  name: text(120).optional(), phone: text(30).optional(), neighborhood: text(80).optional(), street: text(160).optional(),
+  number: text(20).optional(), complement: text(80).optional(), reference: text(200).optional(), consent: z.boolean().optional(),
+  applyToOpen: z.boolean().default(false),
+});
+export const mergeClient = z.object({ mergeId: z.number().int() });
+export const neighborhoodEdit = z.object({ name: text(80), zone: text(80) });
+export const driverPatch = z.object({ name: text(120).optional(), active: z.boolean().optional() });
+export const vehicleActive = z.object({ active: z.boolean() });

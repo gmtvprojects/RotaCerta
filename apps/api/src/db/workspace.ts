@@ -1,6 +1,6 @@
 import { desc, getTableColumns, sql } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
-import type { Client, Dataset, Notification, Order, PaperForm, Route, Workspace } from '@rotacerta/domain';
+import type { Client, Dataset, Driver, Notification, Order, PaperForm, Route, Vehicle, Workspace } from '@rotacerta/domain';
 import type { Db } from './client';
 import * as t from './schema';
 
@@ -12,18 +12,23 @@ function dropNull<T extends object>(obj: T, keys: string[]): T {
 }
 
 const orderFromRow = (r: typeof t.orders.$inferSelect): Order =>
-  dropNull(r, ['boxDetails', 'receiver', 'occurrence']) as unknown as Order;
+  dropNull(r, ['boxDetails', 'receiver', 'occurrence', 'returned', 'cancelled']) as unknown as Order;
 const routeFromRow = (r: typeof t.routes.$inferSelect): Route =>
-  dropNull(r, ['checked', 'claimedAt', 'confirmed', 'audit', 'signatures', 'finished']) as unknown as Route;
+  dropNull(r, ['checked', 'claimedAt', 'confirmed', 'audit', 'signatures', 'finished', 'interrupted']) as unknown as Route;
 const noticeFromRow = ({ seq: _seq, ...r }: typeof t.notifications.$inferSelect): Notification => dropNull(r, ['key']) as unknown as Notification;
 const paperFromRow = (r: typeof t.paperForms.$inferSelect): PaperForm => dropNull(r, ['photo', 'photoName', 'importedAt']) as unknown as PaperForm;
 
 const orderToRow = (o: Order): typeof t.orders.$inferInsert => ({
-  ...o, boxDetails: o.boxDetails ?? null, receiver: o.receiver ?? null, occurrence: o.occurrence ?? null,
+  ...o, boxDetails: o.boxDetails ?? null, receiver: o.receiver ?? null, occurrence: o.occurrence ?? null, returned: o.returned ?? null, cancelled: o.cancelled ?? null,
 });
+// no domínio, `active` ausente significa ativo
+const vehicleFromRow = ({ active, ...v }: typeof t.vehicles.$inferSelect): Vehicle => (active ? v : { ...v, active: false });
+const driverFromRow = ({ active, ...x }: typeof t.drivers.$inferSelect): Driver => (active ? x : { ...x, active: false });
+const vehicleToRow = (v: Vehicle): typeof t.vehicles.$inferInsert => ({ ...v, active: v.active !== false });
+const driverToRow = (x: Driver): typeof t.drivers.$inferInsert => ({ ...x, active: x.active !== false });
 const routeToRow = (r: Route): typeof t.routes.$inferInsert => ({
   ...r, checked: r.checked ?? null, claimedAt: r.claimedAt ?? null, confirmed: r.confirmed ?? null,
-  audit: r.audit ?? null, signatures: r.signatures ?? null, finished: r.finished ?? null,
+  audit: r.audit ?? null, signatures: r.signatures ?? null, finished: r.finished ?? null, interrupted: r.interrupted ?? null,
 });
 const noticeToRow = (n: Notification) => ({ ...n, key: n.key ?? null });
 const paperToRow = (p: PaperForm): typeof t.paperForms.$inferInsert => ({
@@ -48,8 +53,8 @@ export async function loadWorkspace(db: Db): Promise<Workspace> {
   const data: Dataset = {
     zones: zs.map((z) => z.name),
     neighborhoods: ns,
-    vehicles: vs.sort(byId),
-    drivers: ds.sort(byId),
+    vehicles: vs.sort(byId).map(vehicleFromRow),
+    drivers: ds.sort(byId).map(driverFromRow),
     departures: deps.map((d) => d.time).sort(),
     clients: cs.sort(byId) as Client[],
     routes: rs.sort(byId).map(routeFromRow),
@@ -96,8 +101,8 @@ export async function saveWorkspace(db: Db, before: Workspace, after: Workspace)
   const removals: Array<() => Promise<void>> = [];
   removals.push(await syncTable(db, t.zones, t.zones.name, plain(b.zones.map((name) => ({ name }))), plain(a.zones.map((name) => ({ name }))), (r) => r.name as string));
   removals.push(await syncTable(db, t.neighborhoods, t.neighborhoods.name, plain(b.neighborhoods), plain(a.neighborhoods), (r) => r.name as string));
-  removals.push(await syncTable(db, t.vehicles, t.vehicles.id, plain(b.vehicles), plain(a.vehicles), id));
-  removals.push(await syncTable(db, t.drivers, t.drivers.id, plain(b.drivers), plain(a.drivers), id));
+  removals.push(await syncTable(db, t.vehicles, t.vehicles.id, rows(b.vehicles, vehicleToRow), rows(a.vehicles, vehicleToRow), id));
+  removals.push(await syncTable(db, t.drivers, t.drivers.id, rows(b.drivers, driverToRow), rows(a.drivers, driverToRow), id));
   removals.push(await syncTable(db, t.departures, t.departures.time, plain(b.departures.map((time) => ({ time }))), plain(a.departures.map((time) => ({ time }))), (r) => r.time as string));
   removals.push(await syncTable(db, t.clients, t.clients.id, plain(b.clients), plain(a.clients), id));
   removals.push(await syncTable(db, t.routes, t.routes.id, rows(b.routes, routeToRow), rows(a.routes, routeToRow), id));

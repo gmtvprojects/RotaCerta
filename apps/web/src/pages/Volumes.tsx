@@ -3,7 +3,7 @@ import { Empty, Header, OrderPill } from './ui';
 
 export function Volumes() {
   const { data } = useStore();
-  const orders = data.orders.filter((o) => o.status !== 'delivered');
+  const orders = data.orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
   return (
     <>
       <Header title="Cada caixa, no lugar certo." subtitle="Identifique a caixa física, o conteúdo e onde ela está guardada." />

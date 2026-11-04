@@ -3,16 +3,16 @@ export type Role = 'gestao' | 'atendente' | 'expedicao' | 'motorista';
 export type Page =
   | 'dashboard' | 'atendimento' | 'pendencias' | 'cadastro-concluido' | 'perfis'
   | 'entregas' | 'nova' | 'volumes' | 'expedicao' | 'planejamento' | 'romaneio'
-  | 'carregamento' | 'motorista' | 'acompanhamento' | 'notificacoes' | 'configuracoes';
+  | 'carregamento' | 'motorista' | 'acompanhamento' | 'clientes' | 'notificacoes' | 'configuracoes';
 
 /** Páginas permitidas por perfil (derivado do demo de referência). */
 export const ALLOWED_PAGES: Record<Role, readonly Page[]> = {
   gestao: [
     'dashboard', 'atendimento', 'pendencias', 'cadastro-concluido', 'perfis',
     'entregas', 'nova', 'volumes', 'expedicao', 'planejamento', 'romaneio',
-    'carregamento', 'motorista', 'acompanhamento', 'notificacoes', 'configuracoes',
+    'carregamento', 'motorista', 'acompanhamento', 'clientes', 'notificacoes', 'configuracoes',
   ],
-  atendente: ['atendimento', 'pendencias', 'cadastro-concluido', 'perfis', 'entregas', 'nova', 'volumes'],
+  atendente: ['atendimento', 'pendencias', 'cadastro-concluido', 'perfis', 'entregas', 'nova', 'volumes', 'clientes'],
   expedicao: ['perfis', 'entregas', 'nova', 'volumes', 'expedicao', 'planejamento', 'romaneio', 'carregamento', 'acompanhamento'],
   motorista: ['perfis', 'motorista', 'romaneio'],
 };

@@ -15,6 +15,7 @@ import { mutate, type Mutation } from './db/unit-of-work';
 import type { AuthUser } from './http/context';
 import { registerAuthRoutes } from './http/auth';
 import { registerBusinessRoutes } from './http/business';
+import { registerOperationRoutes } from './http/operations';
 import { registerTrackingRoutes } from './http/tracking';
 import { scopeFor } from './privacy';
 import { EventBus } from './realtime/events';
@@ -116,6 +117,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const ctx: Ctx = { app, db, config, events, sender, guard, run };
   registerAuthRoutes(ctx);
   registerBusinessRoutes(ctx);
+  registerOperationRoutes(ctx);
   registerTrackingRoutes(ctx);
   return app;
 }

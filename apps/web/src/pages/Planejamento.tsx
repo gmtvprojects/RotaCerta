@@ -23,7 +23,7 @@ export function Planejamento() {
 
   const stops = plan.orderIds.map((id) => data.orders.find((o) => o.id === id)).filter((o): o is Order => !!o);
   const busy = new Set(data.routes.filter((r) => r.status !== 'finished').map((r) => r.vehicleId));
-  const vehicles = data.vehicles.filter((v) => !busy.has(v.id) || v.id === plan.vehicleId);
+  const vehicles = data.vehicles.filter((v) => v.active !== false && (!busy.has(v.id) || v.id === plan.vehicleId));
   const vehicle = data.vehicles.find((v) => v.id === plan.vehicleId);
   const inTrip = new Set(data.routes.filter((r) => r.status === 'active' && r.driverId != null).map((r) => r.driverId));
   const volumes = stops.reduce((n, o) => n + o.boxes.length + o.gas, 0);
@@ -73,7 +73,7 @@ export function Planejamento() {
           <label>Motorista
             <select value={plan.driverId ?? ''} onChange={(e) => setPlan({ ...plan, driverId: e.target.value ? Number(e.target.value) : null })}>
               <option value="">Qualquer um (escolhe ao iniciar)</option>
-              {data.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}{inTrip.has(d.id) ? ' · em viagem' : ''}</option>)}
+              {data.drivers.filter((d) => d.active !== false).map((d) => <option key={d.id} value={d.id}>{d.name}{inTrip.has(d.id) ? ' · em viagem' : ''}</option>)}
             </select>
           </label>
           <button type="button" onClick={() => setOrder(suggestSequence(stops, data.neighborhoods))}>Sugerir por região e bairro</button>

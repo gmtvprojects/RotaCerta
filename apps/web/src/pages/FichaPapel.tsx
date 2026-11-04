@@ -1,7 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
-  BOX_TYPE_LABELS, DEFAULT_BOX_LOCATION, DELIVERY_WINDOWS, EXAMPLE_SHEET_NUMBER, MAX_PAPER_BOXES,
+  BOX_TYPE_LABELS, DEFAULT_BOX_LOCATION, DELIVERY_WINDOWS, EXAMPLE_SHEET_NUMBER, MAX_PAPER_BOXES, boxesInUse,
   blankPaperValues, examplePaperValues,
   type BoxType, type Neighborhood, type PaperForm, type PaperValues,
 } from '@rotacerta/domain';
@@ -142,7 +142,7 @@ export function FichaRevisao() {
   const confirm = () => {
     const clean = v.boxes.map((b) => ({ ...b, code: b.code.trim().toUpperCase() }));
     const codes = clean.map((b) => b.code);
-    const taken = new Set(data.orders.flatMap((o) => o.boxes));
+    const taken = new Set(boxesInUse(data).keys());
     const missing = (['name', 'phone', 'neighborhood', 'street', 'number', 'window'] as const).filter((k) => !String(v[k]).trim());
     if (missing.length) return setError('Preencha nome, telefone, bairro, rua, número e horário.');
     if (clean.length === 0) return setError('Informe ao menos uma caixa.');

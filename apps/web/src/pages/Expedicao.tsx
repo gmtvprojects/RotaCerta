@@ -14,7 +14,7 @@ export function Expedicao() {
 
   const loadingRoutes = data.routes.filter((r) => r.status === 'loading');
   const busy = new Set(data.routes.filter((r) => r.status !== 'finished').map((r) => r.vehicleId));
-  const freeVehicles = data.vehicles.filter((v) => !busy.has(v.id));
+  const freeVehicles = data.vehicles.filter((v) => v.active !== false && !busy.has(v.id));
   const zoneOf = (n: string) => data.neighborhoods.find((x) => x.name === n)?.zone ?? 'Sem região';
   const ready = data.orders.filter((o) => o.status === 'ready' && o.boxes.length > 0 && (!zone || zoneOf(o.neighborhood) === zone));
   const toggle = (id: number) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));

@@ -7,3 +7,6 @@ export * from './trip';
 export * from './conference';
 export * from './config';
 export * from './commands';
+export * from './rules';
+export * from './operations';
+export * from './clients';

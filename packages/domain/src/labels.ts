@@ -9,7 +9,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
 };
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   draft: 'Rascunho', awaiting: 'Aguardando volumes', ready: 'Pronta para planejar', queued: 'Na fila',
-  loading: 'Em carregamento', released: 'Liberada ao motorista', onroute: 'Em rota', delivered: 'Entregue', failed: 'Não entregue',
+  loading: 'Em carregamento', released: 'Liberada ao motorista', onroute: 'Em rota', delivered: 'Entregue', failed: 'Não entregue', cancelled: 'Cancelada',
 };
 export const ROUTE_STATUS_LABELS: Record<RouteStatus, string> = {
   loading: 'Em conferência', released: 'Disponível ao motorista', active: 'Em andamento', finished: 'Encerrado',

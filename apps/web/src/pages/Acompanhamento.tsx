@@ -3,7 +3,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { call } from '../app/api';
 import { useStore } from '../app/store';
-import { Empty, Header } from './ui';
+import { ReasonDialog } from './OrderActions';
+import { Empty, Header, Modal } from './ui';
 
 interface Last { lat: number; lng: number; accuracy: number | null; speed: number | null; heading: number | null; recordedAt: string }
 interface Live {
@@ -95,7 +96,10 @@ export function Acompanhamento() {
               );
             })}
           </div>
-          <TrackMap live={live} selected={current} trail={trail} now={now} onSelect={setSelected} />
+          <div>
+            <TrackMap live={live} selected={current} trail={trail} now={now} onSelect={setSelected} />
+            {current && <TripActions live={current} onDone={() => void load()} />}
+          </div>
         </div>
       )}
     </>
@@ -153,4 +157,49 @@ function TrackMap({ live, selected, trail, now, onSelect }: { live: Live[]; sele
   }, [selected]);
 
   return <div className="track-map" ref={el} role="img" aria-label="Mapa com a posição dos motoristas em viagem" />;
+}
+
+/** Exceções de uma viagem em andamento: trocar de motorista ou interromper. */
+function TripActions({ live, onDone }: { live: Live; onDone: () => void }) {
+  const { data, command } = useStore();
+  const [dialog, setDialog] = useState<'driver' | 'interrupt' | null>(null);
+  const [driverId, setDriverId] = useState<number | ''>('');
+  const [error, setError] = useState('');
+  const busyDrivers = new Set(data.routes.filter((r) => r.status === 'active' && r.driverId != null).map((r) => r.driverId));
+  const options = data.drivers.filter((d) => d.active !== false && d.id !== live.driverId && !busyDrivers.has(d.id));
+
+  const reassign = async () => {
+    if (driverId === '') { setError('Escolha o novo motorista.'); return; }
+    const err = await command({ method: 'POST', path: `/routes/${live.routeId}/driver`, body: { driverId } });
+    if (err) setError(err); else { setDialog(null); onDone(); }
+  };
+
+  return (
+    <div className="actions" style={{ marginTop: 12 }}>
+      <button type="button" onClick={() => { setError(''); setDialog('driver'); }}>Trocar motorista</button>
+      <button type="button" className="danger" onClick={() => setDialog('interrupt')}>Interromper viagem</button>
+      {dialog === 'driver' && (
+        <Modal title={`Trocar o motorista do romaneio #${live.routeId}`} onClose={() => setDialog(null)} footer={<>
+          <button type="button" onClick={() => setDialog(null)}>Cancelar</button>
+          <button type="button" className="primary" onClick={() => void reassign()}>Trocar</button>
+        </>}>
+          <p className="muted">Hoje: {live.driverName}. O motorista antigo deixa de enviar posição e de registrar paradas; o novo assume a próxima entrega.</p>
+          <label className="field">Novo motorista
+            <select value={driverId} onChange={(e) => setDriverId(e.target.value ? Number(e.target.value) : '')}>
+              <option value="">Selecione</option>
+              {options.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </label>
+          {options.length === 0 && <p className="muted small">Não há outro motorista livre (ativo e fora de viagem).</p>}
+          {error && <p className="error" role="alert">{error}</p>}
+        </Modal>
+      )}
+      {dialog === 'interrupt' && (
+        <ReasonDialog title={`Interromper o romaneio #${live.routeId}`} confirm="Interromper viagem" danger
+          hint="As paradas que faltam ficam como 'não entregue: viagem interrompida'. Quando os volumes voltarem, confirme a devolução na entrega e agende nova tentativa."
+          onClose={() => setDialog(null)}
+          onSubmit={async (reason) => { const err = await command({ method: 'POST', path: `/routes/${live.routeId}/interrupt`, body: { reason } }); if (!err) onDone(); return !err; }} />
+      )}
+    </div>
+  );
 }

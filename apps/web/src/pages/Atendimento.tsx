@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import {
-  BOX_TYPE_LABELS, DEFAULT_BOX_LOCATION, DELIVERY_WINDOWS, EMPTY_DELIVERY_FORM,
+  BOX_TYPE_LABELS, DEFAULT_BOX_LOCATION, DELIVERY_WINDOWS, EMPTY_DELIVERY_FORM, boxesInUse,
   type BoxInput, type BoxType, type DeliveryForm,
 } from '@rotacerta/domain';
 import { useStore } from '../app/store';
@@ -156,7 +156,8 @@ function IdentificarCaixas() {
   const navigate = useNavigate();
   const order = data.orders.find((o) => o.id === Number(orderId));
 
-  const taken = useMemo(() => new Set(data.orders.filter((o) => o.id !== order?.id).flatMap((o) => o.boxes)), [data.orders, order?.id]);
+  // caixa em uso = em outra entrega que ainda não terminou (regra do domínio, a mesma da API)
+  const taken = useMemo(() => new Set(boxesInUse(data, order?.id).keys()), [data, order?.id]);
   const nextCode = (used: string[]) => {
     const max = Math.max(900, ...[...taken, ...used].map((c) => Number(c.replace(/\D/g, '')) || 0));
     return `CX-${max + 1}`;

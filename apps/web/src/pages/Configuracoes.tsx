@@ -13,14 +13,26 @@ type Form =
   | { kind: 'vehicle'; vehicle?: Vehicle };
 
 export function Configuracoes() {
-  const { data } = useStore();
+  const { data, command } = useStore();
   const [tab, setTab] = useState<Tab>('Bairros e zonas');
   const [form, setForm] = useState<Form | null>(null);
+  const [hood, setHood] = useState<string | null>(null);
+  const [problem, setProblem] = useState('');
+
+  /** Ação direta no servidor (editar, desativar, remover), com confirmação opcional. */
+  const act = async (request: Req, ask?: string) => {
+    if (ask && !confirm(ask)) return;
+    setProblem('');
+    const err = await command(request);
+    if (err) setProblem(err);
+  };
   const busyVehicles = new Set(data.routes.filter((r) => r.status !== 'finished').map((r) => r.vehicleId));
 
   return (
     <>
       <Header title="A operação do seu jeito." subtitle="Bairros, equipe e regras simples para começar." />
+      {problem && <div className="banner" role="alert">{problem} <button type="button" onClick={() => setProblem('')}>Fechar</button></div>}
+      {hood && <HoodDialog name={hood} onClose={() => setHood(null)} />}
       <div className="chips">{TABS.map((t) => <button key={t} type="button" className={tab === t ? 'chip on' : 'chip'} onClick={() => setTab(t)}>{t}</button>)}</div>
 
       {tab === 'Bairros e zonas' && (
@@ -34,7 +46,14 @@ export function Configuracoes() {
             return (
               <div className="conf-zone" key={z}>
                 <strong>{z}</strong> <span className="muted small">{hoods.length} bairros cadastrados</span>
-                <div className="chips">{hoods.map((n) => <span className="pill blue" key={n.name}>{n.name}</span>)}</div>
+                <button type="button" className="link" onClick={() => { const name = prompt('Novo nome da região', z); if (name && name.trim() !== z) void act({ method: 'PUT', path: `/config/zones/${encodeURIComponent(z)}`, body: { name } }); }}>Renomear</button>
+                <button type="button" className="link" onClick={() => void act({ method: 'DELETE', path: `/config/zones/${encodeURIComponent(z)}` }, `Remover a região ${z}?`)}>Remover</button>
+                <div className="chips">{hoods.map((n) => (
+                  <span className="pill blue" key={n.name}>{n.name}{' '}
+                    <button type="button" className="link" aria-label={`Editar ${n.name}`} onClick={() => setHood(n.name)}>✎</button>{' '}
+                    <button type="button" className="link" aria-label={`Remover ${n.name}`} onClick={() => void act({ method: 'DELETE', path: `/config/neighborhoods/${encodeURIComponent(n.name)}` }, `Remover o bairro ${n.name}?`)}>×</button>
+                  </span>
+                ))}</div>
               </div>
             );
           })}
@@ -47,8 +66,13 @@ export function Configuracoes() {
           <div className="card-head"><h2>Frota da loja</h2><button type="button" className="primary" onClick={() => setForm({ kind: 'vehicle' })}>+ Veículo</button></div>
           <Table head={['Veículo', 'Identificação fictícia', 'Capacidade de referência', 'Disponibilidade', '']}
             rows={data.vehicles.map((v) => [v.name, v.plate, `${v.capacity} caixas`,
-              <span key="s" className={`pill ${busyVehicles.has(v.id) ? 'amber' : 'green'}`}>{busyVehicles.has(v.id) ? 'Em uso' : 'Disponível'}</span>,
-              <button key="e" type="button" onClick={() => setForm({ kind: 'vehicle', vehicle: v })}>Editar</button>])} />
+              v.active === false ? <span key="s" className="pill gray">Desativado</span>
+                : <span key="s" className={`pill ${busyVehicles.has(v.id) ? 'amber' : 'green'}`}>{busyVehicles.has(v.id) ? 'Em uso' : 'Disponível'}</span>,
+              <span key="e" className="actions">
+                <button type="button" onClick={() => setForm({ kind: 'vehicle', vehicle: v })}>Editar</button>
+                <button type="button" onClick={() => void act({ method: 'PATCH', path: `/config/vehicles/${v.id}/active`, body: { active: v.active === false } })}>{v.active === false ? 'Reativar' : 'Desativar'}</button>
+                <button type="button" onClick={() => void act({ method: 'DELETE', path: `/config/vehicles/${v.id}` }, `Remover ${v.name}? Só é possível se nunca foi usado.`)}>Remover</button>
+              </span>])} />
           <p className="muted small">Capacidade usada apenas como referência em caixas. Peso, compartimentos e acondicionamento exigem validação operacional.</p>
         </section>
       )}
@@ -59,7 +83,13 @@ export function Configuracoes() {
       {tab === 'Equipe' && (
         <section className="card">
           <div className="card-head"><h2>Motoristas</h2><button type="button" className="primary" onClick={() => setForm({ kind: 'driver' })}>+ Motorista</button></div>
-          <Table head={['Nome', 'Função', 'Status']} rows={data.drivers.map((d) => [d.name, 'Motorista', <span key="s" className="pill green">Cadastrado</span>])} />
+          <Table head={['Nome', 'Função', 'Status', '']} rows={data.drivers.map((d) => [d.name, 'Motorista',
+            <span key="s" className={`pill ${d.active === false ? 'gray' : 'green'}`}>{d.active === false ? 'Desativado' : 'Ativo'}</span>,
+            <span key="a" className="actions">
+              <button type="button" onClick={() => { const name = prompt('Nome do motorista', d.name); if (name && name.trim() !== d.name) void act({ method: 'PATCH', path: `/config/drivers/${d.id}`, body: { name } }); }}>Renomear</button>
+              <button type="button" onClick={() => void act({ method: 'PATCH', path: `/config/drivers/${d.id}`, body: { active: d.active === false } })}>{d.active === false ? 'Reativar' : 'Desativar'}</button>
+              <button type="button" onClick={() => void act({ method: 'DELETE', path: `/config/drivers/${d.id}` }, `Remover ${d.name}? Só é possível se nunca fez uma viagem.`)}>Remover</button>
+            </span>])} />
           <p className="muted small">O cadastro de motorista é a ficha da operação; para a pessoa entrar no sistema, crie o usuário na aba Usuários.</p>
         </section>
       )}
@@ -89,6 +119,32 @@ export function Configuracoes() {
 
       {form && <ConfigDialog form={form} onClose={() => setForm(null)} />}
     </>
+  );
+}
+
+/** Renomear um bairro e/ou mudar de região. Clientes e entregas que o usam acompanham o novo nome. */
+function HoodDialog({ name, onClose }: { name: string; onClose: () => void }) {
+  const { data, command } = useStore();
+  const current = data.neighborhoods.find((n) => n.name === name);
+  const [newName, setNewName] = useState(name);
+  const [zone, setZone] = useState(current?.zone ?? data.zones[0] ?? '');
+  const [error, setError] = useState('');
+
+  const save = async () => {
+    const err = await command({ method: 'PUT', path: `/config/neighborhoods/${encodeURIComponent(name)}`, body: { name: newName, zone } });
+    if (err) setError(err); else onClose();
+  };
+  return (
+    <Modal title={`Editar bairro · ${name}`} onClose={onClose} footer={<>
+      <button type="button" onClick={onClose}>Cancelar</button>
+      <button type="button" className="primary" onClick={() => void save()}>Salvar</button>
+    </>}>
+      <label className="field">Nome do bairro<input value={newName} onChange={(e) => setNewName(e.target.value)} autoFocus /></label>
+      <label className="field">Região operacional
+        <select value={zone} onChange={(e) => setZone(e.target.value)}>{data.zones.map((z) => <option key={z}>{z}</option>)}</select>
+      </label>
+      {error && <p className="error" role="alert">{error}</p>}
+    </Modal>
   );
 }
 

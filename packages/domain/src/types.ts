@@ -1,8 +1,9 @@
 import type { BoxType, OrderStatus, RouteStatus } from './status';
 
 export interface Neighborhood { name: string; zone: string }
-export interface Vehicle { id: number; name: string; plate: string; capacity: number }
-export interface Driver { id: number; name: string }
+/** `active` ausente = ativo. Desativar tira da escolha sem apagar o histórico. */
+export interface Vehicle { id: number; name: string; plate: string; capacity: number; active?: boolean }
+export interface Driver { id: number; name: string; active?: boolean }
 
 export interface Client {
   id: number;
@@ -48,6 +49,9 @@ export interface Order {
   receiver?: string;
   /** Motivo registrado quando a entrega não foi feita. */
   occurrence?: { reason: string; notes: string };
+  /** Volumes de uma entrega não realizada que voltaram à expedição (necessário para nova tentativa). */
+  returned?: { at: string; actor: string };
+  cancelled?: { reason: string; at: string; actor: string };
   history: OrderEvent[];
 }
 
@@ -69,6 +73,8 @@ export interface Route {
   /** Assinatura dos volumes de cada pedido quando foram conferidos; se mudar, a conferência do pedido recomeça. */
   signatures?: Record<string, string>;
   finished?: string;
+  /** Viagem encerrada antes de concluir todas as paradas (veículo quebrou, motorista indisponível…). */
+  interrupted?: { reason: string; at: string; actor: string };
 }
 
 /** Um volume físico a conferir: caixa ou item fora das caixas. */

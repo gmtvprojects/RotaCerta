@@ -15,11 +15,13 @@ export const vehicles = pgTable('vehicles', {
   name: text('name').notNull(),
   plate: text('plate').notNull(),
   capacity: integer('capacity').notNull(),
+  active: boolean('active').notNull().default(true),
 });
 
 export const drivers = pgTable('drivers', {
   id: integer('id').primaryKey(),
   name: text('name').notNull(),
+  active: boolean('active').notNull().default(true),
 });
 
 export const departures = pgTable('departures', { time: text('time').primaryKey() });
@@ -51,6 +53,7 @@ export const routes = pgTable('routes', {
   audit: jsonb('audit').$type<Record<string, { checked: boolean; at: string; actor: string }>>(),
   signatures: jsonb('signatures').$type<Record<string, string>>(),
   finished: text('finished'),
+  interrupted: jsonb('interrupted').$type<{ reason: string; at: string; actor: string }>(),
 });
 
 export const orders = pgTable('orders', {
@@ -72,12 +75,14 @@ export const orders = pgTable('orders', {
   frozen: integer('frozen').notNull(),
   gas: integer('gas').notNull(),
   storage: text('storage').notNull(),
-  status: text('status').$type<'draft' | 'awaiting' | 'ready' | 'queued' | 'loading' | 'released' | 'onroute' | 'delivered' | 'failed'>().notNull(),
+  status: text('status').$type<'draft' | 'awaiting' | 'ready' | 'queued' | 'loading' | 'released' | 'onroute' | 'delivered' | 'failed' | 'cancelled'>().notNull(),
   routeId: integer('route_id').references(() => routes.id),
   created: text('created').notNull(),
   completed: text('completed'),
   receiver: text('receiver'),
   occurrence: jsonb('occurrence').$type<{ reason: string; notes: string }>(),
+  returned: jsonb('returned').$type<{ at: string; actor: string }>(),
+  cancelled: jsonb('cancelled').$type<{ reason: string; at: string; actor: string }>(),
   history: jsonb('history').$type<OrderEvent[]>().notNull(),
 });
 

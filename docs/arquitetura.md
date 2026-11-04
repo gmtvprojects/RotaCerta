@@ -94,7 +94,16 @@ O front esconde telas por perfil (`ALLOWED_PAGES`), mas **a API é quem garante*
 - **Web:** o motorista no navegador só compartilha com a tela aberta (navegador não rastreia em segundo plano); para segundo plano, o app Expo. Mapa com Leaflet; tiles via `VITE_MAP_TILES_URL` (padrão OpenStreetMap, só para uso leve: em produção contrate um provedor).
 - **Simulador:** `pnpm --filter @rotacerta/api simulate:driver` envia um percurso fictício para demonstrar o painel.
 
-### 3.9 Configuração (12-factor)
+### 3.9 Regras de exceção da operação
+Ficam em `packages/domain` (`rules.ts`, `operations.ts`, `clients.ts`, `config.ts`), com a mesma mensagem de erro no servidor e na tela.
+- **Caixa em uso:** um código só pode estar em uma entrega ativa por vez. Fica livre quando a entrega é concluída, cancelada, ou quando a falha tem a devolução confirmada.
+- **Editar:** dados da entrega mudam até ela sair para a rota. **Cancelar:** vale em qualquer fase exceto "em rota" (o motorista registra ocorrência, ou a viagem é interrompida) e "entregue". Cancelar uma entrega que está numa carga a tira dela e desfaz a conferência; carga que fica vazia é desfeita.
+- **Entrega não realizada:** os volumes voltam com o motorista; a expedição confirma a devolução (só depois do fim da viagem) e então a entrega pode ganhar **nova tentativa** (volta a "pronta para planejar", com as mesmas caixas) ou ser cancelada.
+- **Viagem:** pode ser **interrompida** (as paradas pendentes viram "não entregue: viagem interrompida" e seguem o fluxo de devolução) ou ter o **motorista trocado** (o antigo deixa de enviar posição e de registrar paradas).
+- **Capacidade:** a carga não passa da capacidade do veículo, nem quando as caixas de uma entrega já carregada aumentam.
+- **Cadastros:** veículo e motorista são **desativados** (somem das escolhas, mantêm o histórico) e só são **removidos** se nunca foram usados. Região e bairro só são removidos vazios; renomear um bairro atualiza clientes e entregas. Clientes com entregas não são removidos: unem-se aos duplicados.
+
+### 3.10 Configuração (12-factor)
 Tudo por variáveis de ambiente, validadas na subida (`src/config.ts`); nada específico de plataforma no código.
 Segredos nunca entram no repositório (`.env` ignorado; usar `.env.example` como modelo).
 
@@ -127,6 +136,13 @@ Autenticação por e-mail e senha (hash `scrypt`, mínimo de 10 caracteres). Log
 | `POST /api/routes/:id/start`, `POST /api/orders/:id/stop` | gestão, motorista | Iniciar viagem, concluir/ocorrência |
 | `POST /api/routes/:id/locations` | motorista da viagem | Envia posições (1 a 100 por chamada, aceita lote após ficar sem sinal) |
 | `GET /api/tracking`, `GET /api/routes/:id/track` | gestão, expedição | Viagens ao vivo (última posição, parada atual, andamento) e percurso feito |
+| `PATCH /api/orders/:id`, `POST /api/orders/:id/cancel`, `…/requeue` | gestão, atendente, expedição | Corrigir dados, cancelar, agendar nova tentativa de entrega não realizada |
+| `POST /api/orders/:id/return` | gestão, expedição | Confirmar que os volumes de uma entrega não realizada voltaram |
+| `POST /api/routes/:id/interrupt`, `POST /api/routes/:id/driver` | gestão, expedição | Interromper a viagem; trocar o motorista (planejada, liberada ou em andamento) |
+| `GET /api/clients`, `GET /api/clients/:id` | gestão, atendente, expedição | Buscar (nome sem acento ou telefone, paginado) e ver histórico |
+| `PATCH /api/clients/:id`, `POST …/merge`, `DELETE …` | gestão, atendente | Corrigir (opcionalmente nas entregas em aberto), unir duplicados, remover cadastro sem entregas |
+| `PUT/DELETE /api/config/zones/:nome`, `…/neighborhoods/:nome` | gestão | Renomear/mover e remover região e bairro |
+| `PATCH/DELETE /api/config/drivers/:id`, `PATCH …/vehicles/:id/active`, `DELETE …/vehicles/:id` | gestão | Editar, desativar e remover motorista e veículo |
 | `POST /api/notifications/:id/retry` | gestão | Reenviar aviso com falha |
 | `POST/PUT/DELETE /api/config/*` | gestão | Regiões, bairros, veículos, motoristas, horários |
 

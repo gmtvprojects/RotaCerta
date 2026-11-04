@@ -1,5 +1,6 @@
 import type { BoxInput, Client, Dataset, DeliveryForm, Order, PaperForm, PaperValues, Route } from './types';
-import { DELIVERY_WINDOWS, MAX_PAPER_BOXES } from './types';
+import { checkBoxesFree, checkCapacity, volumesOfOrders } from './rules';
+import { DELIVERY_WINDOWS, MAX_PAPER_BOXES, volumesOf } from './types';
 
 /** Relógio injetado: o domínio não lê a hora do sistema, quem chama decide (servidor, testes). */
 export interface Clock {
@@ -77,8 +78,15 @@ export function saveBoxes(d: Dataset, orderId: number, boxes: BoxInput[], gas: n
   const o = d.orders.find((x) => x.id === orderId);
   if (!o) return fail('Entrega não encontrada.');
   if (o.status === 'onroute' || o.status === 'delivered' || o.status === 'failed') return fail('Esta entrega já está em rota ou foi encerrada.');
-  const error = validateBoxes(boxes, gas);
+  const error = validateBoxes(boxes, gas) ?? checkBoxesFree(d, boxes.map((b) => b.code), orderId);
   if (error) return fail(error);
+  // carga ainda não iniciada: o novo total de volumes precisa caber no veículo
+  const route = d.routes.find((r) => r.id === o.routeId);
+  if (route && (route.status === 'loading' || route.status === 'released')) {
+    const others = volumesOfOrders(d, route.orders.filter((id) => id !== orderId));
+    const tooMany = checkCapacity(d, route.vehicleId, others + boxes.length + gas);
+    if (tooMany) return fail(tooMany);
+  }
   return {
     ok: true,
     data: {
@@ -104,6 +112,9 @@ export function createRoute(d: Dataset, orderIds: number[], vehicleId: number, d
     if (!o) return fail(`Entrega ${id} não encontrada.`);
     if (o.status !== 'ready' || o.routeId != null) return fail(`A entrega ${id} não está pronta para planejar.`);
   }
+  const tooMany = checkCapacity(d, vehicleId, volumesOfOrders(d, orderIds));
+  if (tooMany) return fail(tooMany);
+  if (driverId != null && d.drivers.find((x) => x.id === driverId)?.active === false) return fail('Este motorista está desativado.');
   const id = nextId(d.routes.map((r) => r.id), 1000);
   const route: Route = { id, vehicleId, driverId, orders: orderIds, status: 'loading', departure: departure || 'A definir', created: clock.time, checked: {} };
   return {
@@ -158,7 +169,7 @@ export function importPaper(w: Workspace, id: string, v: PaperValues, clock: Clo
   const d = w.data;
   const phoneKey = digits(v.phone);
   const known = v.clientId ?? d.clients.find((c) => digits(c.phone) === phoneKey)?.id ?? null;
-  const error = validateDelivery(d, { ...v, clientId: known }) ?? validateBoxes(v.boxes, v.gas);
+  const error = validateDelivery(d, { ...v, clientId: known }) ?? validateBoxes(v.boxes, v.gas) ?? checkBoxesFree(d, v.boxes.map((b) => b.code));
   if (error) return fail(error);
   const orderId = nextId(d.orders.map((o) => o.id), 100);
   const clientId = known ?? nextId(d.clients.map((c) => c.id), 0);
