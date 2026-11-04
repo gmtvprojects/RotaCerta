@@ -15,6 +15,7 @@ import { mutate, type Mutation } from './db/unit-of-work';
 import type { AuthUser } from './http/context';
 import { registerAuthRoutes } from './http/auth';
 import { registerBusinessRoutes } from './http/business';
+import { registerTrackingRoutes } from './http/tracking';
 import { scopeFor } from './privacy';
 import { EventBus } from './realtime/events';
 import { type NotificationSender, SimulatedSender } from './notifications/sender';
@@ -87,11 +88,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.get('/api/ws', { websocket: true }, (socket, req) => {
     // ticket de 30 s obtido em POST /api/auth/ws-ticket; o token de acesso nunca vai na URL
     const ticket = (req.query as { ticket?: string }).ticket;
+    let viewer: Role | undefined;
     try {
-      const payload = app.jwt.verify<{ purpose?: string }>(ticket ?? '');
+      const payload = app.jwt.verify<{ purpose?: string; viewer?: Role }>(ticket ?? '');
       if (payload.purpose !== 'ws') throw new Error('ticket inválido');
+      viewer = payload.viewer;
     } catch { socket.close(4401, 'unauthorized'); return; }
-    const off = events.subscribe((e) => socket.send(JSON.stringify(e)));
+    // a posição dos motoristas só vai para quem acompanha as viagens
+    const mayTrack = viewer === 'gestao' || viewer === 'expedicao';
+    const off = events.subscribe((e) => { if (e.type !== 'location' || mayTrack) socket.send(JSON.stringify(e)); });
     socket.on('close', off);
   });
 
@@ -101,6 +106,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.addHook('onSend', async (req, reply, payload) => {
     const url = req.routeOptions.url ?? '';
     if (req.method === 'GET' || req.method === 'OPTIONS' || !url.startsWith('/api/') || url.startsWith('/api/auth') || url.startsWith('/api/users')) return payload;
+    // a posição chega a cada poucos segundos: não é uma ação de usuário, seria ruído na auditoria
+    if (url.endsWith('/locations')) return payload;
     if (!req.user?.sub) return payload;
     await audit(db, { userId: req.user.sub, userName: req.user.name, action: `${req.method} ${url}`, target: JSON.stringify(req.params ?? {}), status: reply.statusCode, ip: req.ip }, req.log);
     return payload;
@@ -109,5 +116,6 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const ctx: Ctx = { app, db, config, events, sender, guard, run };
   registerAuthRoutes(ctx);
   registerBusinessRoutes(ctx);
+  registerTrackingRoutes(ctx);
   return app;
 }

@@ -5,6 +5,7 @@ import {
   type Order, type Route as RouteT,
 } from '@rotacerta/domain';
 import { useStore } from '../app/store';
+import { LocationSharing } from '../app/location';
 import { Empty, Header, Modal, RoutePill } from './ui';
 
 export function Motorista() {
@@ -157,6 +158,7 @@ function Viagem() {
     <div className="trip">
       <Header title="Minha rota de entregas." subtitle={`Romaneio #${r.id} · ${vehicle?.name ?? ''} · ${driver?.name ?? ''}`} actions={<Link className="btn" to="/motorista">Romaneios</Link>} />
       {role === 'gestao' && <AsDriver />}
+      {role === 'motorista' && r.status === 'active' && <LocationSharing routeId={r.id} />}
       {error && <div className="banner" role="alert">{error}</div>}
       {info && <div className="banner info" role="status">{info}</div>}
       <div className="progress"><span>Parada {index} de {stops.length} · {done} encerradas</span><div className="bar-track"><i style={{ width: `${(done / stops.length) * 100}%` }} /></div></div>

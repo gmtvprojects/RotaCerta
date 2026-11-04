@@ -17,6 +17,7 @@ import { Pendencias } from '../pages/Pendencias';
 import { Carregamento } from '../pages/Carregamento';
 import { Planejamento } from '../pages/Planejamento';
 import { Perfil } from '../pages/Perfil';
+import { Acompanhamento } from '../pages/Acompanhamento';
 
 interface PageDef { page: Page; path: string; label: string; element: JSX.Element; hidden?: boolean }
 
@@ -31,6 +32,7 @@ const PAGES: PageDef[] = [
   { page: 'carregamento', path: '/carregamento', label: 'Carregamento', element: <Carregamento /> },
   { page: 'romaneio', path: '/romaneios', label: 'Romaneios', element: <Romaneios /> },
   { page: 'motorista', path: '/motorista', label: 'Motorista', element: <Motorista /> },
+  { page: 'acompanhamento', path: '/acompanhamento', label: 'Acompanhar viagens', element: <Acompanhamento /> },
   { page: 'notificacoes', path: '/notificacoes', label: 'Notificações', element: <Notificacoes /> },
   { page: 'configuracoes', path: '/configuracoes', label: 'Configurações', element: <Configuracoes /> },
   { page: 'perfis', path: '/perfil', label: 'Perfil', element: <Perfil /> },

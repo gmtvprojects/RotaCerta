@@ -1,4 +1,4 @@
-import { bigint, boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { bigint, boolean, doublePrecision, index, integer, real, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { BoxInfo, OrderEvent, PaperValues, Role } from '@rotacerta/domain';
 
 /** Colunas simples espelham os tipos de `@rotacerta/domain`; estruturas aninhadas ficam em jsonb. */
@@ -135,6 +135,26 @@ export const refreshTokens = pgTable('refresh_tokens', {
   userAgent: text('user_agent'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex('refresh_tokens_hash_idx').on(t.tokenHash), index('refresh_tokens_user_idx').on(t.userId)]);
+
+/**
+ * Posições do motorista durante uma viagem ativa. Guardadas com a hora do aparelho (`recordedAt`) para aceitar
+ * envio em lote depois de ficar sem sinal; a chave (rota, hora) evita duplicar um ponto reenviado.
+ */
+export const driverLocations = pgTable('driver_locations', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  routeId: integer('route_id').notNull().references(() => routes.id, { onDelete: 'cascade' }),
+  driverId: integer('driver_id').notNull().references(() => drivers.id),
+  lat: doublePrecision('lat').notNull(),
+  lng: doublePrecision('lng').notNull(),
+  /** Precisão estimada, em metros. */
+  accuracy: real('accuracy'),
+  /** Velocidade, em metros por segundo. */
+  speed: real('speed'),
+  /** Direção, em graus (0 = norte). */
+  heading: real('heading'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex('driver_locations_route_time_idx').on(t.routeId, t.recordedAt), index('driver_locations_time_idx').on(t.recordedAt)]);
 
 /** Trilha de auditoria: quem fez o quê e quando. Sem corpo de requisição (evita guardar senha e dado pessoal). */
 export const auditLog = pgTable('audit_log', {

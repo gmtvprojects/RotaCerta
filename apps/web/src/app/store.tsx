@@ -28,6 +28,9 @@ function load(): Local {
 
 export type Connection = 'loading' | 'ready' | 'offline';
 
+/** Posição de um motorista em viagem, recebida em tempo real (só gestão e expedição). */
+export interface LocationMsg { type: 'location'; routeId: number; driverId: number; lat: number; lng: number; accuracy: number | null; speed: number | null; heading: number | null; recordedAt: string }
+
 interface Store {
   role: Role | null;
   user: SessionUser | null;
@@ -41,6 +44,8 @@ interface Store {
   /** Última falha de uma operação, para mostrar ao usuário. */
   problem: string | null;
   clearProblem: () => void;
+  /** Recebe cada nova posição de motorista (tempo real). Devolve a função que cancela. */
+  subscribeLocations: (fn: (m: LocationMsg) => void) => () => void;
   refresh: () => Promise<void>;
   /** Troca a própria senha; devolve a mensagem de erro, ou null. */
   changePassword: (current: string, password: string) => Promise<string | null>;
@@ -107,6 +112,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [connection, setConnection] = useState<Connection>('loading');
   const [problem, setProblem] = useState<string | null>(null);
 
+  const locationListeners = useRef(new Set<(m: LocationMsg) => void>());
   const userRef = useRef<SessionUser | null>(null);
   userRef.current = user;
 
@@ -185,7 +191,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (closed) { ws.close(); return; }
-      ws.onmessage = () => {
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(String(ev.data)) as { type?: string };
+          // posição é dado ao vivo, não muda o estado das entregas: não precisa rebuscar tudo
+          if (msg.type === 'location') { locationListeners.current.forEach((fn) => fn(msg as LocationMsg)); return; }
+        } catch { /* mensagem ilegível: trata como aviso de mudança */ }
         clearTimeout(debounce);
         // com gravações pendentes o refresh vem no fim da fila
         debounce = setTimeout(() => { if (pending.current === 0) void refresh(); }, 150);
@@ -220,6 +231,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       plan: local.plan,
       connection, problem,
       clearProblem: () => setProblem(null),
+      subscribeLocations: (fn) => { locationListeners.current.add(fn); return () => { locationListeners.current.delete(fn); }; },
       refresh,
       login: async (email, password) => {
         try {

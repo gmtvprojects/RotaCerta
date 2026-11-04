@@ -2,6 +2,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { buildApp } from './app';
+import { schedulePurge } from './tracking';
 import { loadConfig } from './config';
 import type { Db } from './db/client';
 import * as schema from './db/schema';
@@ -22,4 +23,5 @@ const seeded = await seedDatabase(db as unknown as Db, config.SEED_PASSWORD ?? '
 if (seeded) console.log('Banco novo: dados de demonstração criados (senha dos usuários: rotacerta123).');
 
 const app = await buildApp({ config, db: db as unknown as Db });
+schedulePurge(db as unknown as Db, config.LOCATION_RETENTION_DAYS, app.log);
 await app.listen({ port: config.PORT, host: '0.0.0.0' });

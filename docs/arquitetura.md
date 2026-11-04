@@ -85,7 +85,16 @@ O front esconde telas por perfil (`ALLOWED_PAGES`), mas **a API é quem garante*
 - **Privacidade por perfil:** `apps/api/src/privacy.ts` decide o que cada perfil lê; o filtro roda no servidor.
 - **Auditoria:** toda escrita de usuário logado é gravada **antes** de a resposta sair (`audit_log`), com quem, ação, parâmetros, resultado e IP; login (inclusive falho), logout e gestão de usuários têm eventos próprios. Nunca se grava corpo de requisição, senha nem token.
 
-### 3.8 Configuração (12-factor)
+### 3.8 Localização do motorista (GPS)
+- **Coleta:** só na viagem **ativa** do **próprio** motorista (`POST /api/routes/:id/locations`); fora da viagem a API recusa. Cada ponto traz a hora do aparelho; a chave (rota, hora) torna o reenvio idempotente, então o app pode guardar pontos sem sinal e mandar em lote. Pontos do futuro (>60 s) ou com mais de 24 h são descartados.
+- **Quem vê:** apenas gestão e expedição, por `/api/tracking` e pelo WebSocket (o canal filtra pelo perfil do ticket). Motorista e atendente nunca recebem posições.
+- **Tempo real:** evento `location` no WebSocket com o ponto mais recente; o painel não rebusca o estado todo.
+- **Retenção (dado pessoal):** posições ficam `LOCATION_RETENTION_DAYS` dias (padrão 30) e são apagadas por uma rotina que roda ao subir e a cada 6 h. Informe os motoristas sobre a coleta (o app web já avisa que a posição é compartilhada durante a viagem).
+- **Fora da auditoria:** envio de posição não é ação de usuário e não entra em `audit_log`.
+- **Web:** o motorista no navegador só compartilha com a tela aberta (navegador não rastreia em segundo plano); para segundo plano, o app Expo. Mapa com Leaflet; tiles via `VITE_MAP_TILES_URL` (padrão OpenStreetMap, só para uso leve: em produção contrate um provedor).
+- **Simulador:** `pnpm --filter @rotacerta/api simulate:driver` envia um percurso fictício para demonstrar o painel.
+
+### 3.9 Configuração (12-factor)
 Tudo por variáveis de ambiente, validadas na subida (`src/config.ts`); nada específico de plataforma no código.
 Segredos nunca entram no repositório (`.env` ignorado; usar `.env.example` como modelo).
 
@@ -116,6 +125,8 @@ Autenticação por e-mail e senha (hash `scrypt`, mínimo de 10 caracteres). Log
 | `POST/PATCH/DELETE /api/papers`, `POST /api/papers/:id/import` | gestão, atendente | Fichas de papel |
 | `POST /api/routes`, `…/checks`, `…/sync`, `…/orders/:o/confirm`, `…/release`, `DELETE …` | gestão, expedição | Montar carga, conferir, liberar, descartar |
 | `POST /api/routes/:id/start`, `POST /api/orders/:id/stop` | gestão, motorista | Iniciar viagem, concluir/ocorrência |
+| `POST /api/routes/:id/locations` | motorista da viagem | Envia posições (1 a 100 por chamada, aceita lote após ficar sem sinal) |
+| `GET /api/tracking`, `GET /api/routes/:id/track` | gestão, expedição | Viagens ao vivo (última posição, parada atual, andamento) e percurso feito |
 | `POST /api/notifications/:id/retry` | gestão | Reenviar aviso com falha |
 | `POST/PUT/DELETE /api/config/*` | gestão | Regiões, bairros, veículos, motoristas, horários |
 
@@ -161,7 +172,7 @@ arquivos fora do disco do container (API compatível com S3); estado compartilha
 ## 8. Pendências conhecidas (próximos passos)
 
 1. ~~Conectar o web à API~~ **feito** (seção 6.1). Resta: modo offline (hoje o app precisa de internet).
-2. **GPS do motorista**: tabela de posições, endpoint e canal em tempo real; app Expo com rastreamento em segundo plano.
+2. ~~GPS do motorista (API, painel e envio pelo navegador)~~ **feito**. Resta: app Expo com rastreamento em segundo plano; **ETA e chegada à parada**, que exigem coordenadas dos endereços (geocodificação) — hoje as entregas só têm endereço em texto; tiles de mapa de produção.
 3. **WhatsApp real**: implementar `NotificationSender` com a Cloud API (templates aprovados) e fila com reenvio; hoje o domínio já marca o aviso como entregue na hora (simulado).
 4. ~~Sessão e usuários~~ **feito**. Resta: recuperação de senha por e-mail e bloqueio por conta após muitas falhas (hoje o limite é por IP).
 5. **Escala**: Redis pub/sub no `EventBus` para várias instâncias; limitar o estado carregado por escrita (ver 3.2).

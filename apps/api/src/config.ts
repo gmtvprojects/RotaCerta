@@ -13,6 +13,8 @@ const schema = z.object({
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   /** Tentativas de login por minuto e por IP. */
   LOGIN_RATE_MAX: z.coerce.number().int().min(1).default(10),
+  /** Dias de histórico de posições dos motoristas (dado pessoal: guardar só o necessário). */
+  LOCATION_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
   /** Cookie só por HTTPS. Padrão: ligado em produção. */
   COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   /** Origens permitidas no CORS, separadas por vírgula. */

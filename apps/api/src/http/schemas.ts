@@ -38,6 +38,13 @@ export const vehicle = z.object({ name: text(80), plate: text(20), capacity: z.n
 export const driver = z.object({ name: text(120) });
 export const departure = z.object({ time: text(5) });
 
+const num = (min: number, max: number) => z.number().min(min).max(max);
+const point = z.object({
+  lat: num(-90, 90), lng: num(-180, 180), accuracy: num(0, 100000).nullish(), speed: num(0, 100).nullish(), heading: num(0, 360).nullish(),
+  recordedAt: z.iso.datetime({ offset: true }),
+});
+export const locations = z.object({ points: z.array(point).min(1).max(100) });
+
 const password = z.string().min(10, 'A senha precisa ter ao menos 10 caracteres.').max(200);
 const role = z.enum(['gestao', 'atendente', 'expedicao', 'motorista']);
 export const passwordOnly = z.object({ password });

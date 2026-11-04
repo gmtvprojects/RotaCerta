@@ -29,6 +29,13 @@
       "when": 1793828789288,
       "tag": "0003_rotated_at",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793829165106,
+      "tag": "0004_driver_locations",
+      "breakpoints": true
     }
   ]
 }

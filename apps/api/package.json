@@ -13,7 +13,8 @@
     "test:pg": "vitest run --no-file-parallelism",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate-cli.ts",
-    "db:seed": "tsx src/db/seed-cli.ts"
+    "db:seed": "tsx src/db/seed-cli.ts",
+    "simulate:driver": "tsx src/tools/simulate-driver.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
@@ -36,6 +37,7 @@
     "tsup": "^9.0.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "ws": "^8.22.1"
   }
 }

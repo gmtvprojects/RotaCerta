@@ -84,9 +84,9 @@ export function registerAuthRoutes({ app, db, config, guard }: Ctx) {
 
   app.get('/api/auth/me', { preHandler: guard(ALL_ROLES) }, async (req) => req.user);
 
-  /** Ticket de uso único e vida curta para abrir o WebSocket sem colocar o token de acesso na URL. */
+  /** Ticket de vida curta para abrir o WebSocket sem colocar o token de acesso na URL. */
   app.post('/api/auth/ws-ticket', { preHandler: guard(ALL_ROLES) }, async (req) => ({
-    ticket: app.jwt.sign({ purpose: 'ws', sub: req.user.sub } as never, { expiresIn: '30s' }),
+    ticket: app.jwt.sign({ purpose: 'ws', sub: req.user.sub, viewer: req.user.role } as never, { expiresIn: '30s' }),
   }));
 
   app.post('/api/auth/password', { preHandler: guard(ALL_ROLES), config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
