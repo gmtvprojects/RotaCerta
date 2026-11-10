@@ -14,6 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate-cli.ts",
     "db:seed": "tsx src/db/seed-cli.ts",
+    "db:create-admin": "tsx src/db/create-admin-cli.ts",
     "simulate:driver": "tsx src/tools/simulate-driver.ts"
   },
   "dependencies": {

@@ -185,6 +185,21 @@ Início no **Railway** (serviços `web`, `api`, Postgres, Redis; ambientes `dev`
 Regras para manter a migração simples: container Docker; config só por variáveis de ambiente; Postgres e Redis padrão;
 arquivos fora do disco do container (API compatível com S3); estado compartilhado fora da memória do processo.
 
+### 7.1 Deploy no Railway
+
+Monorepo: cada serviço usa a raiz do repositório como contexto (Root Directory vazio) e um arquivo de configuração próprio.
+
+| Serviço | Config file path | Dockerfile | Variáveis principais |
+|---|---|---|---|
+| `api` | `railway.json` (raiz) | `apps/api/Dockerfile` | `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `CORS_ORIGIN`, `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true`, `NODE_ENV=production` |
+| `web` | `apps/web/railway.json` | `apps/web/Dockerfile` | `VITE_API_URL` (usada no build; sem barra no final) |
+
+- A API aplica as migrações ao subir e responde `/ready` (200 só com o banco acessível).
+- O site é estático (nginx) com fallback para `index.html`; `sw.js` e o manifesto são servidos com `no-cache`.
+- Banco vazio em produção (sem seed): crie o primeiro gestor com `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` e
+  `DATABASE_URL` (URL pública do Postgres) e rode `pnpm --filter @rotacerta/api db:create-admin`. Os demais usuários
+  são criados na tela de Usuários.
+
 ## 8. Pendências conhecidas (próximos passos)
 
 1. ~~Conectar o web à API~~ **feito** (seção 6.1). Resta: modo offline (hoje o app precisa de internet).

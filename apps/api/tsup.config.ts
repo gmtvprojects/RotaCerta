@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 
 // O pacote de domínio é TypeScript puro (sem build); entra no bundle da API.
 export default defineConfig({
-  entry: ['src/server.ts', 'src/db/migrate-cli.ts', 'src/db/seed-cli.ts'],
+  entry: ['src/server.ts', 'src/db/migrate-cli.ts', 'src/db/seed-cli.ts', 'src/db/create-admin-cli.ts'],
   format: ['esm'],
   target: 'node22',
   platform: 'node',
