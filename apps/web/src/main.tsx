@@ -5,6 +5,10 @@ import { App } from './app/App';
 import { StoreProvider } from './app/store';
 import { PwaProvider } from './app/pwa';
 import { TourProvider } from './app/tour';
+import '@fontsource-variable/bricolage-grotesque';
+import '@fontsource-variable/instrument-sans';
+import '@fontsource-variable/jetbrains-mono';
+import '@fontsource-variable/newsreader/opsz-italic.css';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(

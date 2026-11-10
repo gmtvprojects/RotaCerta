@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Logo } from '../app/icons';
 import { useStore } from '../app/store';
 
 /** Mostrada no primeiro acesso depois que outra pessoa definiu a senha (cadastro da empresa ou redefinição): a pessoa escolhe a dela. */
@@ -24,7 +25,7 @@ export function ForcePassword() {
   return (
     <div className="login">
       <section className="login-card">
-        <div className="brand"><strong>RotaCerta</strong><small>Gestão de entregas</small></div>
+        <Logo sub="Gestão de entregas" />
         <h1>Crie sua senha</h1>
         <p className="muted">Olá, {user?.name.split(' ')[0]}. A senha que você recebeu é provisória: escolha uma só sua para continuar.</p>
         <form onSubmit={submit}>

@@ -6,6 +6,18 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@rotacerta/web", "dev"],
       "port": 5173
+    },
+    {
+      "name": "web-alt",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@rotacerta/web", "dev", "--port", "5180", "--strictPort"],
+      "port": 5180
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@rotacerta/api", "dev:local"],
+      "port": 3333
     }
   ]
 }

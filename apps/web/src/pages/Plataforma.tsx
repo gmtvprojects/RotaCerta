@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { AnyRole } from '@rotacerta/domain';
 import { call } from '../app/api';
+import { Icon, Logo, type IconName } from '../app/icons';
 import { useStore } from '../app/store';
 import { Empty, Header, Modal } from './ui';
 
@@ -28,22 +29,22 @@ export function PlatformApp() {
   const [tab, setTab] = useState<Tab>('empresas');
   return (
     <div className="shell">
-      <aside className="side">
-        <div className="brand"><strong>RotaCerta</strong><small>Plataforma</small></div>
-        <nav aria-label="Menu da plataforma">
-          {([['empresas', 'Empresas'], ['usuarios', 'Buscar usuário'], ['auditoria', 'Auditoria']] as [Tab, string][]).map(([key, label]) => (
-            <a key={key} href={`#${key}`} className={tab === key ? 'active' : ''} onClick={(e) => { e.preventDefault(); setTab(key); }}>{label}</a>
-          ))}
-        </nav>
-        <div className="side-bottom">
-          <div className="side-user"><span>{user?.name}</span><button type="button" onClick={logout}>Sair</button></div>
-        </div>
-      </aside>
+      <header className="topbar">
+        <Logo sub="Plataforma" />
+        <span className="grow" />
+        <span className="role-tag">{user?.name}</span>
+        <button type="button" onClick={logout}>Sair</button>
+      </header>
       <main className="main">
         {tab === 'empresas' && <Empresas />}
         {tab === 'usuarios' && <BuscaUsuarios />}
         {tab === 'auditoria' && <Auditoria />}
       </main>
+      <nav className="dock" aria-label="Menu da plataforma">
+        {([['empresas', 'Empresas', 'building'], ['usuarios', 'Buscar usuário', 'search'], ['auditoria', 'Auditoria', 'shield']] as [Tab, string, IconName][]).map(([key, label, icon]) => (
+          <button key={key} type="button" className={tab === key ? 'active' : ''} aria-current={tab === key ? 'page' : undefined} onClick={() => setTab(key)}><Icon name={icon} /><span>{label}</span></button>
+        ))}
+      </nav>
     </div>
   );
 }

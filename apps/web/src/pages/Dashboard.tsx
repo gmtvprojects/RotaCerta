@@ -7,22 +7,29 @@ export function Dashboard() {
   const { data } = useStore();
   const [openId, setOpenId] = useState<number | null>(null);
   const count = (s: string) => data.orders.filter((o) => o.status === s).length;
-  const kpis = [
-    ['Entregas de hoje', data.orders.length],
+  const total = data.orders.length || 1;
+  // As etapas na ordem em que a entrega anda: do atendimento à porta do cliente.
+  const flow = [
     ['Aguardando volumes', count('awaiting')],
-    ['Prontas para planejar', count('ready')],
+    ['Prontas para planejar', count('ready') + count('queued')],
+    ['Em carregamento', count('loading') + count('released')],
     ['Em rota', count('onroute')],
-    ['Concluídas', count('delivered')],
+    ['Entregues', count('delivered')],
   ] as const;
+  const failed = count('failed');
 
   return (
     <>
       <Header title="A operação, em movimento." subtitle="Do caixa à porta do cliente. Tudo no mesmo lugar." />
-      <div className="kpis">
-        {kpis.map(([label, value]) => (
-          <div key={label} className="card kpi"><span className="muted">{label}</span><strong>{value}</strong></div>
+      <section className="card flow" aria-label="Fluxo das entregas de hoje">
+        {flow.map(([label, value], i) => (
+          <div key={label} className={`flow-step ${i === flow.length - 1 ? 'end' : ''}`}>
+            <strong>{value}</strong><span>{label}</span>
+            <i><b style={{ width: `${(value / total) * 100}%` }} /></i>
+          </div>
         ))}
-      </div>
+      </section>
+      <p className="muted small">{data.orders.length} entregas no total{failed > 0 ? ` · ${failed} não entregue(s), aguardando nova tentativa` : ''}.</p>
       <section className="card">
         <h2>Entregas</h2>
         <div className="table-wrap">

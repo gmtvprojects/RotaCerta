@@ -1,10 +1,12 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { ORDER_STATUS_LABELS, ROUTE_STATUS_LABELS, type Order, type Route } from '@rotacerta/domain';
+import { Icon } from '../app/icons';
+import { SlideUpText } from '../app/SlideUpText';
 
 export function Header({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
     <header className="page-head">
-      <div><h1>{title}</h1>{subtitle && <p className="muted">{subtitle}</p>}</div>
+      <div><h1><SlideUpText>{title}</SlideUpText></h1>{subtitle && <p className="muted">{subtitle}</p>}</div>
       {actions && <div className="actions">{actions}</div>}
     </header>
   );
@@ -36,5 +38,40 @@ export function Modal({ title, onClose, children, footer }: { title: string; onC
         <div className="modal-foot">{footer}</div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Botão de segurar para confirmar: evita mudar o estado de uma entrega com um toque sem querer.
+ * A faixa verde preenche enquanto a pessoa segura (dedo, mouse, Espaço ou Enter); soltar antes cancela.
+ */
+export function HoldButton({ label, doneLabel, onConfirm, holdMs = 1100 }: { label: string; doneLabel: string; onConfirm: () => void; holdMs?: number }) {
+  const [state, setState] = useState<'idle' | 'holding' | 'done'>('idle');
+  const confirm = useRef(onConfirm);
+  confirm.current = onConfirm;
+
+  useEffect(() => {
+    if (state === 'idle') return;
+    // segurando: conclui ao fim do tempo; concluído: mostra a confirmação por um instante antes de avisar a tela
+    const timer = window.setTimeout(() => (state === 'holding' ? setState('done') : confirm.current()), state === 'holding' ? holdMs : 450);
+    return () => window.clearTimeout(timer);
+  }, [state, holdMs]);
+
+  const start = () => setState((s) => (s === 'idle' ? 'holding' : s));
+  const cancel = () => setState((s) => (s === 'holding' ? 'idle' : s));
+  const isKey = (e: KeyboardEvent) => e.key === ' ' || e.key === 'Enter';
+
+  const content = (
+    <span className="hold-in"><Icon name={state === 'done' ? 'check' : 'pin'} />{state === 'done' ? doneLabel : label}</span>
+  );
+  return (
+    <button type="button" className="hold" data-state={state} style={{ '--hold-ms': `${holdMs}ms` } as CSSProperties}
+      onPointerDown={(e) => { if (e.button === 0) start(); }} onPointerUp={cancel} onPointerLeave={cancel} onPointerCancel={cancel}
+      onKeyDown={(e) => { if (isKey(e)) { e.preventDefault(); if (!e.repeat) start(); } }} onKeyUp={(e) => { if (isKey(e)) cancel(); }}
+      onBlur={cancel} onContextMenu={(e) => e.preventDefault()}>
+      {content}
+      <span className="hold-fill" aria-hidden="true">{content}</span>
+      <span className="sr-only" role="status">{state === 'done' ? doneLabel : ''}</span>
+    </button>
   );
 }

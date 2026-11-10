@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { ALLOWED_PAGES, ROLE_HOME, ROLE_LABELS, type Page, type Role } from '@rotacerta/domain';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { ALLOWED_PAGES, ORDER_STATUS_LABELS, ROLE_HOME, ROLE_LABELS, canAccess, type Page, type Role } from '@rotacerta/domain';
+import { Icon, Logo, type IconName } from './icons';
+import { Palette, type PaletteItem } from './Palette';
 import { useStore } from './store';
 import { TourBar, useTour } from './tour';
 import { Login } from '../pages/Login';
@@ -21,6 +23,7 @@ import { Acompanhamento } from '../pages/Acompanhamento';
 import { Clientes } from '../pages/Clientes';
 import { ForcePassword } from '../pages/ForcePassword';
 import { PlatformApp } from '../pages/Plataforma';
+import { OrderDetail } from '../pages/OrderDetail';
 
 interface PageDef { page: Page; path: string; label: string; element: JSX.Element; hidden?: boolean }
 
@@ -42,28 +45,77 @@ const PAGES: PageDef[] = [
   { page: 'perfis', path: '/perfil', label: 'Perfil', element: <Perfil /> },
 ];
 
-/** Atalhos da barra inferior no celular, por perfil (o resto fica em "Menu"). */
-const BOTTOM: Record<Role, [string, string][]> = {
-  atendente: [['/atendimento', 'Início'], ['/entregas', 'Entregas'], ['/perfil', 'Perfil']],
-  expedicao: [['/expedicao', 'Cargas'], ['/carregamento', 'Carregamento'], ['/perfil', 'Perfil']],
-  motorista: [['/motorista', 'Rota'], ['/romaneios', 'Romaneio'], ['/perfil', 'Perfil']],
-  gestao: [['/gestao', 'Gestão'], ['/entregas', 'Entregas'], ['/expedicao', 'Expedição'], ['/perfil', 'Perfil']],
+interface DockLink { to: string; label: string; icon: IconName }
+
+/**
+ * Doca flutuante: os destinos do dia a dia de cada perfil e, em verde, a ação principal dele.
+ * É a mesma no computador e no celular. As outras telas ficam na busca (Ctrl K).
+ */
+const DOCK: Record<Role, { links: DockLink[]; action: DockLink }> = {
+  atendente: {
+    links: [{ to: '/atendimento', label: 'Início', icon: 'home' }, { to: '/entregas', label: 'Entregas', icon: 'box' }, { to: '/clientes', label: 'Clientes', icon: 'user' }],
+    action: { to: '/atendimento/nova', label: 'Nova entrega', icon: 'plus' },
+  },
+  expedicao: {
+    links: [{ to: '/expedicao', label: 'Cargas', icon: 'truck' }, { to: '/volumes', label: 'Volumes', icon: 'box' }, { to: '/acompanhamento', label: 'Viagens', icon: 'pin' }],
+    action: { to: '/carregamento', label: 'Conferir', icon: 'list' },
+  },
+  motorista: {
+    links: [{ to: '/motorista', label: 'Início', icon: 'home' }, { to: '/romaneios', label: 'Romaneio', icon: 'list' }],
+    action: { to: '/motorista/viagem', label: 'Minha viagem', icon: 'pin' },
+  },
+  gestao: {
+    links: [{ to: '/gestao', label: 'Painel', icon: 'chart' }, { to: '/entregas', label: 'Entregas', icon: 'box' }, { to: '/acompanhamento', label: 'Viagens', icon: 'pin' }],
+    action: { to: '/atendimento/nova', label: 'Nova entrega', icon: 'plus' },
+  },
 };
+
+const PAGE_ICON: Partial<Record<Page, IconName>> = {
+  dashboard: 'chart', atendimento: 'home', entregas: 'box', clientes: 'user', volumes: 'box', expedicao: 'truck',
+  carregamento: 'list', romaneio: 'list', motorista: 'pin', acompanhamento: 'pin', notificacoes: 'bell', perfis: 'user',
+};
+
+const initials = (name: string) => name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
 const homePath = (role: Role) => PAGES.find((p) => p.page === ROLE_HOME[role])!.path;
 const menuFor = (role: Role) => PAGES.filter((p) => ALLOWED_PAGES[role].includes(p.page));
 
 export function App() {
-  const { role, user, isPlatform, mustChangePassword, logout, connection, problem, clearProblem, refresh } = useStore();
+  const { role, user, data, isPlatform, mustChangePassword, logout, connection, problem, clearProblem, refresh } = useStore();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const tour = useTour();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [orderId, setOrderId] = useState<number | null>(null);
 
-  // Ao navegar, o menu do celular fecha e a tela volta ao topo.
-  useEffect(() => { setMenuOpen(false); window.scrollTo(0, 0); }, [pathname]);
+  // Ao navegar, a tela volta ao topo.
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+
+  // Ctrl K (ou Cmd K) abre a busca em qualquer tela.
+  const inApp = !!role && connection === 'ready' && !mustChangePassword && !isPlatform;
+  useEffect(() => {
+    if (!inApp) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearching((open) => !open); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [inApp]);
+
+  const startTour = tour.start;
+  const paletteItems = useMemo<PaletteItem[]>(() => (role ? [
+    ...menuFor(role).filter((m) => !m.hidden).map((m): PaletteItem => ({ key: m.path, group: 'Ir para', label: m.label, icon: PAGE_ICON[m.page] ?? 'arrow', run: () => navigate(m.path) })),
+    { key: 'tour', group: 'Ações', label: 'Ver jornada deste perfil', icon: 'play', run: startTour },
+    { key: 'logout', group: 'Ações', label: 'Sair', icon: 'logout', run: logout },
+  ] : []), [role, navigate, startTour, logout]);
+
+  const searchOrders = useCallback((q: string): PaletteItem[] => (role && canAccess(role, 'entregas')
+    ? data.orders.filter((o) => String(o.id).includes(q) || o.name.toLowerCase().includes(q)).slice(0, 6)
+      .map((o) => ({ key: `order-${o.id}`, group: 'Entregas', label: `#${o.id} · ${o.name}`, hint: ORDER_STATUS_LABELS[o.status], icon: 'box' as const, run: () => setOrderId(o.id) }))
+    : []), [role, data.orders]);
 
   if (!user && connection === 'loading') {
-    return <div className="login"><section className="login-card"><div className="brand"><strong>RotaCerta</strong><small>Gestão de entregas</small></div><p className="muted">Abrindo…</p></section></div>;
+    return <div className="login"><section className="login-card"><Logo sub="Gestão de entregas" /><p className="muted">Abrindo…</p></section></div>;
   }
   // sem sessão o endereço volta à raiz: depois do logout (ou de um link antigo) a barra não fica em /gestao
   if (!user) return pathname === '/' ? <Login /> : <Navigate to="/" replace />;
@@ -75,7 +127,7 @@ export function App() {
   if (connection !== 'ready') {
     return (
       <div className="login"><section className="login-card">
-        <div className="brand"><strong>RotaCerta</strong><small>Gestão de entregas</small></div>
+        <Logo sub="Gestão de entregas" />
         {connection === 'loading' ? <p className="muted">Carregando os dados da operação…</p> : <>
           <p className="error" role="alert">{problem ?? 'Não foi possível falar com o servidor.'}</p>
           <button type="button" className="primary" onClick={() => void refresh()}>Tentar de novo</button>
@@ -90,23 +142,23 @@ export function App() {
   if (pathname === '/' || pathname === '/login') return <Navigate to={homePath(role)} replace />;
   if (current && !ALLOWED_PAGES[role].includes(current.page)) return <Navigate to={homePath(role)} replace />;
 
+  const dock = DOCK[role];
+  const middle = Math.ceil(dock.links.length / 2);
+  const dockLink = (l: DockLink) => (
+    <NavLink key={l.to} to={l.to} className={({ isActive }) => (isActive ? 'active' : '')}><Icon name={l.icon} /><span>{l.label}</span></NavLink>
+  );
+
   return (
     <div className={`shell ${tour.active ? 'with-tour' : ''}`}>
-      <aside className={`side ${menuOpen ? 'open' : ''}`}>
-        <div className="brand"><strong>RotaCerta</strong><small>Gestão de entregas</small></div>
-        <nav aria-label="Menu principal">
-          {menu.filter((m) => !m.hidden).map((m) => (
-            <NavLink key={m.path} to={m.path} className={({ isActive }) => (isActive ? 'active' : '')}>{m.label}</NavLink>
-          ))}
-        </nav>
-        <div className="side-bottom">
-          <button type="button" className="journey" onClick={() => { setMenuOpen(false); tour.start(); }}>▶ Ver jornada deste perfil</button>
-          <div className="side-user">
-            <span>{ROLE_LABELS[role]}</span>
-            <button type="button" onClick={logout}>Sair</button>
-          </div>
-        </div>
-      </aside>
+      <header className="topbar">
+        <Link to={homePath(role)} className="logo-link" aria-label="RotaCerta, início"><Logo /></Link>
+        <span className="grow" />
+        <span className="role-tag">{ROLE_LABELS[role]}</span>
+        {canAccess(role, 'notificacoes') && (
+          <NavLink to="/notificacoes" className={({ isActive }) => `iconbtn ${isActive ? 'active' : ''}`} aria-label="Notificações"><Icon name="bell" /></NavLink>
+        )}
+        <Link to="/perfil" className="avatar" aria-label={`Perfil de ${user.name}`}>{initials(user.name)}</Link>
+      </header>
       <main className="main">
         {problem && <div className="banner error" role="alert">{problem} <button type="button" onClick={clearProblem}>Fechar</button></div>}
         <Routes>
@@ -115,12 +167,14 @@ export function App() {
         </Routes>
       </main>
       <TourBar />
-      <nav className="bottom-nav" aria-label="Atalhos">
-        {BOTTOM[role].map(([to, label]) => (
-          <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'active' : '')}>{label}</NavLink>
-        ))}
-        <button type="button" className={menuOpen ? 'active' : ''} aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}>Menu</button>
+      <nav className="dock" aria-label="Navegação principal">
+        {dock.links.slice(0, middle).map(dockLink)}
+        <Link to={dock.action.to} className="dock-act"><Icon name={dock.action.icon} /><span>{dock.action.label}</span></Link>
+        {dock.links.slice(middle).map(dockLink)}
+        <button type="button" onClick={() => setSearching(true)} aria-haspopup="dialog"><Icon name="search" /><span>Buscar</span><kbd>Ctrl K</kbd></button>
       </nav>
+      {searching && <Palette items={paletteItems} search={searchOrders} onClose={() => setSearching(false)} />}
+      {orderId != null && <OrderDetail orderId={orderId} onClose={() => setOrderId(null)} />}
     </div>
   );
 }

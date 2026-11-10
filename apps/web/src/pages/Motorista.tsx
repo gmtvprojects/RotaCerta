@@ -6,7 +6,7 @@ import {
 } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { LocationSharing } from '../app/location';
-import { Empty, Header, Modal, RoutePill } from './ui';
+import { Empty, Header, HoldButton, Modal, RoutePill } from './ui';
 
 export function Motorista() {
   return (
@@ -229,7 +229,7 @@ function DeliverDialog({ o, onClose, onSubmit }: { o: Order; onClose: () => void
   return (
     <Modal title="Concluir entrega" onClose={onClose} footer={<>
       <button type="button" onClick={onClose}>Cancelar</button>
-      <button type="button" className="primary" onClick={() => onSubmit(receiver)}>Confirmar entrega</button>
+      <HoldButton label="Segure para confirmar" doneLabel="Entrega confirmada" onConfirm={() => onSubmit(receiver)} />
     </>}>
       <div><strong>#{o.id} · {o.name}</strong><div className="muted small">{o.street}, {o.number} — {o.neighborhood}</div></div>
       <label className="field">Quem recebeu? (opcional)
