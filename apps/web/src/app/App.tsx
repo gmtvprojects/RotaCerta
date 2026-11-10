@@ -65,7 +65,8 @@ export function App() {
   if (!user && connection === 'loading') {
     return <div className="login"><section className="login-card"><div className="brand"><strong>RotaCerta</strong><small>Gestão de entregas</small></div><p className="muted">Abrindo…</p></section></div>;
   }
-  if (!user) return <Login />;
+  // sem sessão o endereço volta à raiz: depois do logout (ou de um link antigo) a barra não fica em /gestao
+  if (!user) return pathname === '/' ? <Login /> : <Navigate to="/" replace />;
   // senha definida por outra pessoa (cadastro da empresa ou redefinição): troca antes de qualquer outra tela
   if (mustChangePassword) return <ForcePassword />;
   // quem opera o serviço usa o painel de empresas, sem as telas da operação
