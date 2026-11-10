@@ -6,8 +6,7 @@ import {
   setChecks, startTrip, syncSignatures, updatePaper, type Cmd, type Dataset, type Role, type TripResult, type Workspace,
 } from '@rotacerta/domain';
 import type { Ctx } from '../app';
-import { mutate } from '../db/unit-of-work';
-import { loadWorkspace } from '../db/workspace';
+import { mutate, readWorkspace } from '../db/unit-of-work';
 import * as body from './schemas';
 
 const OFFICE: Role[] = ['gestao', 'atendente', 'expedicao'];
@@ -24,7 +23,7 @@ const next = <R>(w: Workspace, r: Cmd | TripResult, result: R): Step<R> =>
 
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
-export function registerBusinessRoutes({ app, db, run, guard, sender, events }: Ctx) {
+export function registerBusinessRoutes({ app, db, run, guard, company, sender, events }: Ctx) {
   /** Valida o corpo da requisição; responde 400 e devolve undefined se estiver inválido. */
   const parse = <T>(schema: ZodType<T>, req: FastifyRequest, reply: FastifyReply): T | undefined => {
     const p = schema.safeParse(req.body ?? {});
@@ -159,14 +158,15 @@ export function registerBusinessRoutes({ app, db, run, guard, sender, events }: 
     const queued = await run(req, reply, 'notifications', (_u, clock) => (w) => next(w, retryNotice(w.data, noticeId, clock.time), null));
     if (reply.sent) return queued;
     // o envio acontece fora da transação: o provedor pode demorar
-    const notice = (await loadWorkspace(db)).data.notifications.find((n) => n.id === noticeId);
+    const companyId = company(req);
+    const notice = (await readWorkspace(db, companyId)).data.notifications.find((n) => n.id === noticeId);
     if (!notice) return queued;
     const sent = await sender.send(notice);
-    await mutate(db, (w) => ({
+    await mutate(db, companyId, (w) => ({
       ok: true, result: null,
       workspace: { ...w, data: sent.ok ? settleNotice(w.data, noticeId) : failNotice(w.data, noticeId, sent.reason) },
     }));
-    events.publish({ type: 'changed', scope: 'notifications', at: new Date().toISOString() });
+    events.publish({ type: 'changed', companyId, scope: 'notifications', at: new Date().toISOString() });
     return { ok: true, delivered: sent.ok };
   });
 

@@ -12,6 +12,8 @@ import * as schema from '../src/db/schema';
 import { seedDatabase } from '../src/db/seed';
 
 export const PASSWORD = 'senha-de-teste-123';
+/** A empresa de demonstração criada pelo seed é sempre a primeira. */
+export const COMPANY_ID = 1;
 
 export const testConfig: Config = {
   NODE_ENV: 'test', PORT: 0, DATABASE_URL: 'pglite', JWT_SECRET: 'x'.repeat(40), JWT_EXPIRES_IN: '15m', REFRESH_DAYS: 14, COOKIE_SAMESITE: 'lax', LOGIN_RATE_MAX: 1000, LOCATION_RETENTION_DAYS: 30,
@@ -65,7 +67,7 @@ export async function createTestApp() {
 const tokens = new WeakMap<FastifyInstance, Map<string, { authorization: string }>>();
 
 /** Faz login uma vez por perfil (o login tem limite de tentativas). */
-export async function loginAs(app: FastifyInstance, role: 'gestao' | 'atendente' | 'expedicao' | 'motorista') {
+export async function loginAs(app: FastifyInstance, role: 'gestao' | 'atendente' | 'expedicao' | 'motorista' | 'plataforma') {
   const cache = tokens.get(app) ?? new Map();
   tokens.set(app, cache);
   if (cache.has(role)) return cache.get(role)!;

@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:pg": "vitest run --no-file-parallelism",
     "db:generate": "drizzle-kit generate",
+    "db:generate:tenant": "drizzle-kit generate --config drizzle.tenant.config.ts",
     "db:migrate": "tsx src/db/migrate-cli.ts",
     "db:seed": "tsx src/db/seed-cli.ts",
     "db:create-admin": "tsx src/db/create-admin-cli.ts",

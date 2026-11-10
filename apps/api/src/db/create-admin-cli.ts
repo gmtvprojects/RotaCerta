@@ -4,10 +4,11 @@ import { connect } from './pg';
 import * as t from './schema';
 
 /**
- * Cria o primeiro usuário de gestão em um banco vazio (produção não tem seed).
+ * Cria um administrador da plataforma (perfil `plataforma`): quem cadastra empresas, acessos e redefine senhas.
+ * Não pertence a nenhuma empresa e não vê os dados da operação delas.
  * Os dados vêm de variáveis de ambiente, para a senha não ficar no histórico do terminal nem em argumentos:
  *   DATABASE_URL, ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD
- * Os demais usuários são criados depois, pela tela de Usuários.
+ * As empresas e os usuários delas são criados depois, pelo painel da plataforma.
  */
 const { DATABASE_URL, ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
 if (!DATABASE_URL) throw new Error('Defina DATABASE_URL.');
@@ -22,8 +23,8 @@ try {
   if (existing.length) {
     console.log('Já existe um usuário com esse e-mail; nada a fazer.');
   } else {
-    await db.insert(t.users).values({ name: ADMIN_NAME.trim(), email, role: 'gestao', passwordHash: await hashPassword(ADMIN_PASSWORD) });
-    console.log(`Gestor criado: ${email}`);
+    await db.insert(t.users).values({ name: ADMIN_NAME.trim(), email, role: 'plataforma', companyId: null, passwordHash: await hashPassword(ADMIN_PASSWORD) });
+    console.log(`Administrador da plataforma criado: ${email}`);
   }
 } finally {
   await close();

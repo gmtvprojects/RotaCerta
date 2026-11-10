@@ -1,6 +1,7 @@
-import type { Role } from '@rotacerta/domain';
+import type { AnyRole } from '@rotacerta/domain';
 
-export interface AuthUser { sub: number; name: string; role: Role; driverId: number | null }
+/** `companyId` é nulo apenas para o perfil `plataforma`. */
+export interface AuthUser { sub: number; name: string; role: AnyRole; companyId: number | null; driverId: number | null }
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {

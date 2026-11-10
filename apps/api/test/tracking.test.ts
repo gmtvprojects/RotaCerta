@@ -122,7 +122,8 @@ describe('retenção e fim da viagem', () => {
     // um ponto "antigo" dentro da janela de aceitação e depois envelhecido manualmente
     await call('POST', '/api/routes/1047/locations', motorista, { points: [point(40)] });
     const { sql } = await import('drizzle-orm');
-    await db.execute(sql`update driver_locations set recorded_at = now() - interval '40 days' where recorded_at = (select min(recorded_at) from driver_locations)`);
+    const { withTenant } = await import('../src/db/tenants');
+    await withTenant(db, 1, (tx) => tx.execute(sql`update driver_locations set recorded_at = now() - interval '40 days' where recorded_at = (select min(recorded_at) from driver_locations)`));
     expect(await purgeLocations(db, 30)).toBe(1);
   });
 

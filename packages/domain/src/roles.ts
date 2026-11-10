@@ -1,4 +1,13 @@
+/** Perfis de quem trabalha dentro de uma empresa. */
 export type Role = 'gestao' | 'atendente' | 'expedicao' | 'motorista';
+
+/** Perfil de quem opera o serviço (cadastra empresas e acessos). Não pertence a nenhuma empresa e não vê dados da operação. */
+export type PlatformRole = 'plataforma';
+
+/** Qualquer perfil que pode existir em um login. */
+export type AnyRole = Role | PlatformRole;
+
+export const isCompanyRole = (role: AnyRole): role is Role => role !== 'plataforma';
 
 export type Page =
   | 'dashboard' | 'atendimento' | 'pendencias' | 'cadastro-concluido' | 'perfis'

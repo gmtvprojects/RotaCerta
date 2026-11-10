@@ -22,6 +22,7 @@ COPY apps/api/package.json apps/api/
 RUN pnpm install --frozen-lockfile --prod --filter @rotacerta/api...
 COPY --from=build /repo/apps/api/dist apps/api/dist
 COPY --from=build /repo/apps/api/drizzle apps/api/drizzle
+COPY --from=build /repo/apps/api/drizzle-tenant apps/api/drizzle-tenant
 WORKDIR /app/apps/api
 USER node
 EXPOSE 3333

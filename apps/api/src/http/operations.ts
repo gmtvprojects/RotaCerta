@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ZodType } from 'zod';
 import {
@@ -8,7 +8,8 @@ import {
 } from '@rotacerta/domain';
 import type { Ctx } from '../app';
 import { schema } from '../db/client';
-import { loadWorkspace } from '../db/workspace';
+import { withTenant } from '../db/tenants';
+import { readWorkspace } from '../db/unit-of-work';
 import * as body from './schemas';
 
 const OFFICE: Role[] = ['gestao', 'atendente', 'expedicao'];
@@ -20,7 +21,7 @@ type Step<R> = { ok: true; workspace: Workspace; result: R } | { ok: false; erro
 const next = <R>(w: Workspace, r: Cmd | TripResult, result: R): Step<R> => (r.ok ? { ok: true, workspace: { ...w, data: r.data }, result } : r);
 
 /** Entregas, viagens, clientes e cadastros: correções e ações que fogem do fluxo principal. */
-export function registerOperationRoutes({ app, db, run, guard }: Ctx) {
+export function registerOperationRoutes({ app, db, run, guard, company }: Ctx) {
   const parse = <T>(schema: ZodType<T>, req: FastifyRequest, reply: FastifyReply): T | undefined => {
     const p = schema.safeParse(req.body ?? {});
     if (p.success) return p.data;
@@ -71,13 +72,13 @@ export function registerOperationRoutes({ app, db, run, guard }: Ctx) {
   app.get('/api/clients', { preHandler: guard(OFFICE) }, async (req) => {
     const q = req.query as { q?: string; limit?: string; offset?: string };
     const limit = Math.min(Math.max(Number(q.limit) || 20, 1), 100);
-    const { data } = await loadWorkspace(db);
+    const { data } = await readWorkspace(db, company(req));
     return searchClients(data, q.q ?? '', limit, Math.max(Number(q.offset) || 0, 0));
   });
 
   app.get('/api/clients/:id', { preHandler: guard(OFFICE) }, async (req, reply) => {
     const id = num(req);
-    const { data } = await loadWorkspace(db);
+    const { data } = await readWorkspace(db, company(req));
     const client = data.clients.find((c) => c.id === id);
     if (!client) return reply.code(404).send({ error: 'Cliente não encontrado.' });
     return { client, orders: clientHistory(data, id) };
@@ -130,9 +131,10 @@ export function registerOperationRoutes({ app, db, run, guard }: Ctx) {
   app.delete('/api/config/drivers/:id', { preHandler: guard(GESTAO) }, async (req, reply) => {
     const id = num(req);
     // um usuário ligado a este cadastro (ou posições gravadas) impede a remoção
-    const [linked] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.driverId, id));
+    const companyId = company(req);
+    const [linked] = await db.select({ id: schema.users.id }).from(schema.users).where(and(eq(schema.users.companyId, companyId), eq(schema.users.driverId, id)));
     if (linked) return reply.code(422).send({ error: 'Há um usuário ligado a este motorista. Desative o motorista em vez de remover.' });
-    const [located] = await db.select({ id: schema.driverLocations.id }).from(schema.driverLocations).where(eq(schema.driverLocations.driverId, id)).limit(1);
+    const [located] = await withTenant(db, companyId, (tx) => tx.select({ id: schema.driverLocations.id }).from(schema.driverLocations).where(eq(schema.driverLocations.driverId, id)).limit(1));
     if (located) return reply.code(422).send({ error: 'Este motorista tem histórico de viagens. Desative em vez de remover.' });
     return run(req, reply, 'config', () => (w) => next(w, removeDriver(w.data, id), null));
   });
