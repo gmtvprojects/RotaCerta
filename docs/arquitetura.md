@@ -189,10 +189,13 @@ arquivos fora do disco do container (API compatível com S3); estado compartilha
 
 Monorepo: cada serviço usa a raiz do repositório como contexto (Root Directory vazio) e um arquivo de configuração próprio.
 
-| Serviço | Config file path | Dockerfile | Variáveis principais |
+Não há `railway.json`: um arquivo na raiz seria herdado por todos os serviços. Cada serviço escolhe o Dockerfile pela
+variável `RAILWAY_DOCKERFILE_PATH`, e o health check fica em *Settings → Deploy → Healthcheck Path*.
+
+| Serviço | `RAILWAY_DOCKERFILE_PATH` | Healthcheck | Variáveis principais |
 |---|---|---|---|
-| `api` | `railway.json` (raiz) | `apps/api/Dockerfile` | `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `CORS_ORIGIN`, `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true`, `NODE_ENV=production` |
-| `web` | `apps/web/railway.json` | `apps/web/Dockerfile` | `VITE_API_URL` (usada no build; sem barra no final) |
+| `api` | `apps/api/Dockerfile` | `/ready` | `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `CORS_ORIGIN`, `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true`, `NODE_ENV=production` |
+| `web` | `apps/web/Dockerfile` | `/` | `VITE_API_URL` (usada no build; sem barra no final) |
 
 - A API aplica as migrações ao subir e responde `/ready` (200 só com o banco acessível).
 - O site é estático (nginx) com fallback para `index.html`; `sw.js` e o manifesto são servidos com `no-cache`.
