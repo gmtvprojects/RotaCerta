@@ -58,6 +58,7 @@ th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align
 .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
 .login-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px; width: 100%; max-width: 440px; }
 .login-card .brand { margin-bottom: 18px; }
+.login-card form { display: grid; gap: 14px; margin-top: 16px; }
 .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
 .role-btn { display: flex; flex-direction: column; text-align: left; gap: 2px; padding: 14px; }
 .role-btn span { color: var(--muted); font-size: 13px; }

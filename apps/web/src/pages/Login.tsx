@@ -29,10 +29,10 @@ export function Login() {
         <h1>Entrar</h1>
         <p className="muted">Use o e-mail e a senha fornecidos pela loja.</p>
         <form onSubmit={submit}>
-          <label>E-mail
+          <label className="field">E-mail
             <input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
-          <label>Senha
+          <label className="field">Senha
             <input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
           {(error || problem) && <p className="error" role="alert">{error || problem}</p>}
