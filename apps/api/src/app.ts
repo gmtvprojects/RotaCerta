@@ -15,6 +15,7 @@ import type { AuthUser } from './http/context';
 import { registerAuthRoutes } from './http/auth';
 import { registerBusinessRoutes } from './http/business';
 import { registerOperationRoutes } from './http/operations';
+import { registerPlatformRoutes } from './http/platform';
 import { registerTrackingRoutes } from './http/tracking';
 import { scopeFor } from './privacy';
 import { EventBus } from './realtime/events';
@@ -130,5 +131,6 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerBusinessRoutes(ctx);
   registerOperationRoutes(ctx);
   registerTrackingRoutes(ctx);
+  registerPlatformRoutes(ctx);
   return app;
 }

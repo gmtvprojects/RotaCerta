@@ -58,6 +58,17 @@ export const userPatch = z.object({
   driverId: z.number().int().nullable().optional(), active: z.boolean().optional(),
 });
 
+/* ---------- painel da plataforma ---------- */
+const personName = z.string().trim().min(3, 'Informe o nome completo.').max(120);
+const email = z.email('Informe um e-mail válido.').max(200);
+export const companyCreate = z.object({
+  name: z.string().trim().min(2, 'Informe o nome da empresa.').max(120),
+  manager: z.object({ name: personName, email, password }),
+});
+export const companyPatch = z.object({ name: z.string().trim().min(2, 'Informe o nome da empresa.').max(120).optional(), active: z.boolean().optional() });
+export const platformUserCreate = z.object({ name: personName, email, password, role: z.enum(['gestao', 'atendente', 'expedicao']) });
+export const platformUserPatch = z.object({ name: personName.optional(), active: z.boolean().optional() });
+
 /* ---------- operações sobre entregas, viagens, clientes e cadastros ---------- */
 export const orderPatch = z.object({
   name: text(120).optional(), phone: text(30).optional(), neighborhood: text(80).optional(), street: text(160).optional(),

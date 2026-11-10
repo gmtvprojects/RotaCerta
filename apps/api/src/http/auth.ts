@@ -17,7 +17,7 @@ const ALL_ROLES: AnyRole[] = [...COMPANY_ROLES, 'plataforma'];
 
 type UserRow = typeof schema.users.$inferSelect;
 const toAuth = (u: UserRow): AuthUser => ({ sub: u.id, name: u.name, role: u.role, companyId: u.companyId, driverId: u.driverId });
-const toDto = (u: UserRow) => ({ id: u.id, name: u.name, email: u.email, role: u.role, roleLabel: ANY_ROLE_LABELS[u.role], driverId: u.driverId, active: u.active, createdAt: u.createdAt });
+export const toDto = (u: UserRow) => ({ id: u.id, name: u.name, email: u.email, role: u.role, roleLabel: ANY_ROLE_LABELS[u.role], driverId: u.driverId, active: u.active, createdAt: u.createdAt });
 
 export function registerAuthRoutes({ app, db, config, guard, company }: Ctx) {
   const secure = (config.COOKIE_SECURE ?? String(config.NODE_ENV === 'production')) === 'true';
