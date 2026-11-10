@@ -18,7 +18,8 @@ export async function createCompanyWithManager(db: Db, input: NewCompany): Promi
     const [company] = await q.insert(t.companies).values({ name: input.name }).returning({ id: t.companies.id });
     await applyTenantMigrations(q, company.id);
     const [manager] = await q.insert(t.users).values({
-      companyId: company.id, name: input.manager.name, email, role: 'gestao', passwordHash: input.manager.passwordHash,
+      // a senha inicial foi escolhida pelo suporte: quem recebe o acesso troca no primeiro login
+      companyId: company.id, name: input.manager.name, email, role: 'gestao', passwordHash: input.manager.passwordHash, mustChangePassword: true,
     }).returning({ id: t.users.id });
     return { ok: true as const, companyId: company.id, managerId: manager.id };
   });

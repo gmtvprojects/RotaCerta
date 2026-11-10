@@ -103,6 +103,31 @@ Ficam em `packages/domain` (`rules.ts`, `operations.ts`, `clients.ts`, `config.t
 - **Capacidade:** a carga não passa da capacidade do veículo, nem quando as caixas de uma entrega já carregada aumentam.
 - **Cadastros:** veículo e motorista são **desativados** (somem das escolhas, mantêm o histórico) e só são **removidos** se nunca foram usados. Região e bairro só são removidos vazios; renomear um bairro atualiza clientes e entregas. Clientes com entregas não são removidos: unem-se aos duplicados.
 
+### 3.11 Multiempresa (um schema do Postgres por empresa)
+O serviço atende várias empresas. Cada uma tem um **schema próprio** (`tenant_<id>`) com as tabelas da operação
+(`src/db/schema-tenant.ts`); o schema `public` guarda só o que é compartilhado (`schema-platform.ts`): `companies`,
+`users`, `refresh_tokens`, `audit_log`. Escolhido porque os ids são gerados pelo domínio e reiniciam em cada empresa
+(cada uma tem a entrega nº 1, 2, 3…) e porque **esquecer de escolher a empresa falha** (as tabelas não existem em `public`)
+em vez de vazar dados de outra.
+- **Acesso a dados da operação** só por `withTenant(db, companyId, …)` ou `mutate(db, companyId, …)` (`db/tenants.ts`,
+  `db/unit-of-work.ts`): a transação aponta o `search_path` para o schema da empresa. O `companyId` vem do token (nunca do cliente)
+  e o nome do schema só é montado a partir de um inteiro validado. A trava de escrita é por empresa.
+- **Migrações em dois conjuntos:** `drizzle/` (plataforma, `pnpm db:generate`) e `drizzle-tenant/` (empresas,
+  `pnpm db:generate:tenant`). Ao subir, a API migra a plataforma e depois **todas as empresas** (`migrateAllTenants`);
+  criar uma empresa aplica `drizzle-tenant/` ao schema novo, na mesma transação do cadastro.
+- **Perfis:** os quatro de empresa (`gestao`, `atendente`, `expedicao`, `motorista`) e `plataforma` (`AnyRole`), que não
+  pertence a empresa nenhuma (`users.company_id` nulo). A plataforma **não lê dados da operação**: o painel mostra
+  cadastro, acessos, auditoria e só contagens de uso.
+- **Isolamento nas rotas:** usuários, auditoria, eventos em tempo real (`EventBus.subscribe(companyId)`) e o WebSocket
+  (ticket com a empresa) são filtrados por empresa. A gestão só enxerga e altera usuários da própria empresa.
+- **Empresa suspensa** não entra (403 no login, renovação recusada e sessões revogadas). O token de acesso já emitido vale
+  até 15 min.
+- **Senhas definidas por outra pessoa** (cadastro da empresa, redefinição pelo suporte ou pela gestão) marcam
+  `must_change_password`: o app exige a troca antes de qualquer tela. A senha provisória gerada pelo suporte é devolvida uma
+  única vez (`Cache-Control: no-store`) e nunca vai para log ou auditoria. Ações da plataforma ficam na auditoria da empresa
+  afetada (`platform.*`).
+- **E-mail único em todo o serviço:** o login não pede a empresa.
+
 ### 3.10 Configuração (12-factor)
 Tudo por variáveis de ambiente, validadas na subida (`src/config.ts`); nada específico de plataforma no código.
 Segredos nunca entram no repositório (`.env` ignorado; usar `.env.example` como modelo).
@@ -127,7 +152,10 @@ Autenticação por e-mail e senha (hash `scrypt`, mínimo de 10 caracteres). Log
 |---|---|---|
 | `POST /api/auth/login`, `/refresh`, `/logout`, `/ws-ticket`, `/password`; `GET /api/auth/me` | todos | Sessão e troca da própria senha |
 | `GET/POST /api/users`, `PATCH /api/users/:id`, `POST /api/users/:id/password` | gestão | Usuários: criar, mudar perfil, desativar, redefinir senha |
-| `GET /api/audit` | gestão | Trilha de auditoria |
+| `GET /api/audit` | gestão | Trilha de auditoria da própria empresa |
+| `GET/POST /api/platform/companies`, `GET/PATCH /api/platform/companies/:id` | plataforma | Empresas: listar (usuários, último acesso), criar com o primeiro gestor, ver uso (contagens), renomear, suspender/reativar |
+| `GET/POST /api/platform/companies/:id/users`, `GET /api/platform/users?q=`, `PATCH /api/platform/users/:id`, `POST /api/platform/users/:id/reset-password` | plataforma | Acessos de uma empresa, busca em todas, desativar/reativar, senha provisória (mostrada uma vez) |
+| `GET /api/platform/audit` | plataforma | Auditoria de todas as empresas (filtro por empresa e ação) |
 | `GET /api/dataset` | todos | Estado, filtrado por perfil: o motorista vê só as rotas dele (e as liberadas sem dono); fichas de papel só atendente/gestão |
 | `GET /api/ws?token=` | todos | WebSocket: avisa `changed` quando algo muda |
 | `POST /api/orders`, `PUT /api/orders/:id/boxes` | gestão, atendente, expedição | Cadastrar entrega, identificar caixas |
@@ -199,9 +227,14 @@ variável `RAILWAY_DOCKERFILE_PATH`, e o health check fica em *Settings → Depl
 
 - A API aplica as migrações ao subir e responde `/ready` (200 só com o banco acessível).
 - O site é estático (nginx) com fallback para `index.html`; `sw.js` e o manifesto são servidos com `no-cache`.
-- Banco vazio em produção (sem seed): crie o primeiro gestor com `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` e
-  `DATABASE_URL` (URL pública do Postgres) e rode `pnpm --filter @rotacerta/api db:create-admin`. Os demais usuários
-  são criados na tela de Usuários.
+- Banco vazio em produção (sem seed): crie o **administrador da plataforma** com `ADMIN_NAME`, `ADMIN_EMAIL`,
+  `ADMIN_PASSWORD` e `DATABASE_URL` (URL pública do Postgres) e rode `pnpm --filter @rotacerta/api db:create-admin`.
+  Entre no site, abra **Empresas → Nova empresa** (cria a empresa e o primeiro gestor dela) e envie o acesso ao responsável.
+  Os demais usuários de cada empresa são criados pela gestão dela, na tela de Usuários.
+- **Migração de um banco anterior ao multiempresa** (`0006_multiempresa`): só roda se não houver entregas, clientes,
+  veículos nem motoristas (a migração recusa e explica). O primeiro usuário da gestão vira administrador da plataforma e os
+  demais usuários são removidos, porque agora todo usuário pertence a uma empresa.
+- A imagem da API inclui `drizzle-tenant/`; o `migrate-cli` cuida da plataforma e das empresas.
 
 ## 8. Pendências conhecidas (próximos passos)
 
@@ -213,3 +246,4 @@ variável `RAILWAY_DOCKERFILE_PATH`, e o health check fica em *Settings → Depl
 6. ~~Privacidade do motorista~~ **feito**. Resta: rever o que a expedição precisa ver de cada cliente.
 7. **Rascunho e planejamento** (`draft`, `plan`) continuam locais ao navegador; avaliar persistir no servidor.
 8. **Infra como código** (Terraform/CDK) só na fase AWS.
+9. ~~Multiempresa e painel da plataforma~~ **feito** (3.11). Resta: excluir empresa (hoje só suspende), planos e cobrança, domínio/subdomínio por empresa, criar outros administradores da plataforma pela tela (hoje por `db:create-admin`), limites por empresa (usuários, entregas), exportar/apagar os dados de uma empresa (LGPD), e a migração de schemas em lote ficar mais lenta com muitas empresas (hoje sequencial ao subir a API).

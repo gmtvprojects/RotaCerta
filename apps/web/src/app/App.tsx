@@ -19,6 +19,8 @@ import { Planejamento } from '../pages/Planejamento';
 import { Perfil } from '../pages/Perfil';
 import { Acompanhamento } from '../pages/Acompanhamento';
 import { Clientes } from '../pages/Clientes';
+import { ForcePassword } from '../pages/ForcePassword';
+import { PlatformApp } from '../pages/Plataforma';
 
 interface PageDef { page: Page; path: string; label: string; element: JSX.Element; hidden?: boolean }
 
@@ -52,7 +54,7 @@ const homePath = (role: Role) => PAGES.find((p) => p.page === ROLE_HOME[role])!.
 const menuFor = (role: Role) => PAGES.filter((p) => ALLOWED_PAGES[role].includes(p.page));
 
 export function App() {
-  const { role, logout, connection, problem, clearProblem, refresh } = useStore();
+  const { role, user, isPlatform, mustChangePassword, logout, connection, problem, clearProblem, refresh } = useStore();
   const { pathname } = useLocation();
   const tour = useTour();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -60,9 +62,14 @@ export function App() {
   // Ao navegar, o menu do celular fecha e a tela volta ao topo.
   useEffect(() => { setMenuOpen(false); window.scrollTo(0, 0); }, [pathname]);
 
-  if (!role && connection === 'loading') {
+  if (!user && connection === 'loading') {
     return <div className="login"><section className="login-card"><div className="brand"><strong>RotaCerta</strong><small>Gestão de entregas</small></div><p className="muted">Abrindo…</p></section></div>;
   }
+  if (!user) return <Login />;
+  // senha definida por outra pessoa (cadastro da empresa ou redefinição): troca antes de qualquer outra tela
+  if (mustChangePassword) return <ForcePassword />;
+  // quem opera o serviço usa o painel de empresas, sem as telas da operação
+  if (isPlatform) return <PlatformApp />;
   if (!role) return <Login />;
   if (connection !== 'ready') {
     return (

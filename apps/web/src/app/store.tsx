@@ -32,7 +32,12 @@ export type Connection = 'loading' | 'ready' | 'offline';
 export interface LocationMsg { type: 'location'; routeId: number; driverId: number; lat: number; lng: number; accuracy: number | null; speed: number | null; heading: number | null; recordedAt: string }
 
 interface Store {
+  /** Perfil de empresa do usuário logado; nulo sem login e para o perfil da plataforma (veja `isPlatform`). */
   role: Role | null;
+  /** Quem opera o serviço: usa o painel de empresas, sem dados de operação. */
+  isPlatform: boolean;
+  /** A senha foi definida por outra pessoa: o app exige a troca antes de continuar. */
+  mustChangePassword: boolean;
   user: SessionUser | null;
   driverId: number;
   data: Dataset;
@@ -109,6 +114,7 @@ const initial = load();
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [local, setLocal] = useState<Local>(initial);
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [mustChange, setMustChange] = useState(false);
   const [snapshot, setSnapshot] = useState<{ data: Dataset; papers: PaperForm[] }>({ data: EMPTY_DATA, papers: [] });
   // começa em 'loading' enquanto tenta retomar a sessão pelo cookie
   const [connection, setConnection] = useState<Connection>('loading');
@@ -126,6 +132,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const logout = useCallback((remote = true) => {
     if (remote) void apiLogout();
     setUser(null);
+    setMustChange(false);
     setSnapshot({ data: EMPTY_DATA, papers: [] });
     setConnection('ready');
     setLocal((s) => ({ ...s, plan: null, draft: null }));
@@ -136,7 +143,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let alive = true;
     renewSession().then((session) => {
       if (!alive) return;
-      if (session) { setUser(session.user); setLocal((s) => ({ ...s, driverId: session.user.driverId ?? s.driverId })); } else setConnection('ready');
+      if (session) { setUser(session.user); setMustChange(session.mustChangePassword); setLocal((s) => ({ ...s, driverId: session.user.driverId ?? s.driverId })); } else setConnection('ready');
     }).catch(() => { if (alive) setConnection('offline'); });
     return () => { alive = false; };
   }, []);
@@ -147,6 +154,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!userRef.current) return;
+    // o perfil da plataforma não tem dados de operação para carregar
+    if (userRef.current.role === 'plataforma') { setConnection('ready'); return; }
     try {
       const snap = await fetchSnapshot();
       setSnapshot(snap);
@@ -181,6 +190,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     void refresh();
+    // sem empresa não há canal em tempo real
+    if (user.role === 'plataforma') return;
     let ws: WebSocket | undefined;
     let closed = false;
     let retry: ReturnType<typeof setTimeout>;
@@ -225,7 +236,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const queued = async <T,>(request: Req): Promise<T> => enqueue(() => send(request) as Promise<T>);
 
     return {
-      role: user?.role ?? null,
+      role: user && user.role !== 'plataforma' ? user.role : null,
+      isPlatform: user?.role === 'plataforma',
+      mustChangePassword: mustChange,
       user,
       driverId: local.driverId,
       data, papers,
@@ -240,6 +253,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const session = await apiLogin(email, password);
           setConnection('loading');
           setUser(session.user);
+          setMustChange(session.mustChangePassword);
           setLocal((s) => ({ ...s, driverId: session.user.driverId ?? s.driverId }));
           return null;
         } catch (e) {
@@ -255,7 +269,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       },
       changePassword: async (current, password) => {
-        try { await call('POST', '/auth/password', { current, password }); return null; }
+        try { await call('POST', '/auth/password', { current, password }); setMustChange(false); return null; }
         catch (e) { return e instanceof Error ? e.message : 'Não foi possível trocar a senha.'; }
       },
       saveDraft: (form) => setLocal((s) => (JSON.stringify(s.draft) === JSON.stringify(form) ? s : { ...s, draft: form })),
@@ -314,7 +328,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         { method: 'POST', path: `/orders/${orderId}/stop`, body: outcome },
       ),
     };
-  }, [snapshot, local, user, connection, problem, commit, enqueue, refresh, logout]);
+  }, [snapshot, local, user, mustChange, connection, problem, commit, enqueue, refresh, logout]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

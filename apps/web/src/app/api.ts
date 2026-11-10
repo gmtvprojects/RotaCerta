@@ -1,11 +1,13 @@
-import type { Dataset, PaperForm, Role } from '@rotacerta/domain';
+import type { AnyRole, Dataset, PaperForm } from '@rotacerta/domain';
 
 /** Endereço da API. Em produção vem do build (`VITE_API_URL`); local, aponta para a API de desenvolvimento. */
 export const API_URL: string = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3333';
 
-export interface SessionUser { sub: number; name: string; role: Role; driverId: number | null }
+/** `companyId` é nulo só para o perfil `plataforma`. */
+export interface SessionUser { sub: number; name: string; role: AnyRole; companyId: number | null; driverId: number | null }
 export interface Snapshot { data: Dataset; papers: PaperForm[] }
-export interface Session { token: string; user: SessionUser }
+/** `mustChangePassword`: a senha foi definida por outra pessoa e precisa ser trocada antes de usar o sistema. */
+export interface Session { token: string; user: SessionUser; mustChangePassword: boolean }
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
