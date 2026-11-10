@@ -34,5 +34,10 @@ export function GlowCard({ children, className = '' }: { children: ReactNode; cl
     };
   }, []);
 
-  return <div ref={ref} className={`glow-card ${className}`}>{children}</div>;
+  return (
+    <div ref={ref} className={`glow-card ${className}`}>
+      <span className="glow-ring" aria-hidden="true"><span /></span>
+      {children}
+    </div>
+  );
 }

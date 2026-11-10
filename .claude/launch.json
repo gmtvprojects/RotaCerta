@@ -8,16 +8,24 @@
       "port": 5173
     },
     {
-      "name": "web-alt",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@rotacerta/web", "dev", "--port", "5180", "--strictPort"],
-      "port": 5180
-    },
-    {
       "name": "api",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@rotacerta/api", "dev:local"],
       "port": 3333
+    },
+    {
+      "name": "web-alt",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@rotacerta/web", "dev", "--port", "5180", "--strictPort"],
+      "env": { "VITE_API_URL": "http://localhost:3334" },
+      "port": 5180
+    },
+    {
+      "name": "api-alt",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@rotacerta/api", "dev:local"],
+      "env": { "PORT": "3334", "CORS_ORIGIN": "http://localhost:5180" },
+      "port": 3334
     }
   ]
 }
