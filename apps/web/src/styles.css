@@ -51,9 +51,15 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand); out
 @keyframes su-rise { from { transform: translateY(115%); } to { transform: none; } }
 
 /* Marca */
-.logo { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
-.logo strong { font: 700 17px/1.1 var(--display); letter-spacing: -.02em; display: block; }
-.logo small { display: block; font-size: 11.5px; opacity: .7; }
+.logo { display: inline-flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; }
+.logo svg { width: 34px; height: 34px; flex: none; }
+.logo strong { font: 700 22px/1.05 var(--display); letter-spacing: -.03em; display: block; }
+.logo small { display: block; font-size: 12px; opacity: .7; margin-top: 2px; }
+@media (max-width: 420px) {
+  .logo { gap: 10px; }
+  .logo svg { width: 30px; height: 30px; }
+  .logo strong { font-size: 19px; }
+}
 .logo-bg { fill: var(--grad-a); } .logo-dot { fill: var(--accent); }
 .brand { display: flex; flex-direction: column; } .brand strong { font: 700 20px var(--display); } .brand small { opacity: .7; }
 
