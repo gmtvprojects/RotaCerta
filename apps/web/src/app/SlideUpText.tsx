@@ -4,7 +4,7 @@ import type { CSSProperties, MouseEvent } from 'react';
  * Texto que sobe: cada palavra aparece de trás de uma máscara, uma depois da outra.
  * Mesmos tempos do SlideUpText do Spell UI (0,5 s por palavra, curva .625,.05,0,1), só com CSS.
  * Ao passar o mouse, a palavra sai por cima e volta por baixo (só se não estiver animando).
- * Use uma vez por tela, no título. O texto completo fica em `aria-label` para leitores de tela.
+ * Use nos títulos. O texto completo fica em `aria-label` para leitores de tela.
  */
 const EASE = 'cubic-bezier(.625, .05, 0, 1)';
 const ROLL: Keyframe[] = [

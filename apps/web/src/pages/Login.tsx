@@ -16,10 +16,11 @@ export function Login() {
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const mapRef = useRef<HTMLElement>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     setError('');
     clearProblem();
     setBusy(true);
@@ -31,8 +32,9 @@ export function Login() {
   return (
     <div className="signin">
       <RouteMap area={mapRef} />
-      <aside className="signin-map" ref={mapRef}>
+      <aside className="signin-map">
         <Logo />
+        <div className="signin-route-area" ref={mapRef} aria-hidden="true" />
         <div className="signin-copy">
           <span className="signin-tag">Do caixa à porta do cliente</span>
           <h1><SlideUpText delay={0.2}>{'Entregas organizadas.\nClientes avisados.'}</SlideUpText></h1>
@@ -41,8 +43,9 @@ export function Login() {
       </aside>
       <main className="signin-side">
         <GlowCard className="signin-form">
-          <div>
-            <h2>Entrar</h2>
+          <div className="signin-heading">
+            <span className="signin-eyebrow">RotaCerta · Acesso à loja</span>
+            <h2><SlideUpText delay={0.3}>{'Sua operação\ncomeça aqui.'}</SlideUpText></h2>
             <p className="muted">Use o e-mail e a senha fornecidos pela loja.</p>
           </div>
           <form onSubmit={submit}>
@@ -58,7 +61,12 @@ export function Login() {
               </span>
             </label>
             {(error || problem) && <p className="error" role="alert">{error || problem}</p>}
-            <button type="submit" className="primary go" disabled={busy}>{busy ? 'Entrando…' : <>Entrar <Icon name="arrow" size={18} /></>}</button>
+            <button type="submit" className="signin-submit" disabled={busy} aria-busy={busy}>
+              <span className="signin-submit-icon" aria-hidden="true">
+                {busy ? <span className="signin-submit-spinner" /> : <Icon name="arrow" size={19} />}
+              </span>
+              <span className="signin-submit-label" aria-live="polite">{busy ? 'Entrando…' : 'Entrar'}</span>
+            </button>
           </form>
           <p className="muted small">Esqueceu a senha? Peça uma nova para a gestão da loja.</p>
           {import.meta.env.DEV && (

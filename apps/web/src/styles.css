@@ -157,10 +157,11 @@ tbody tr:last-child td { border-bottom: 0; }
 .route-map { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; }
 .signin::after { content: ""; position: absolute; inset: 45% 0 0; z-index: 0; pointer-events: none; background: linear-gradient(transparent, rgba(6, 17, 43, .92) 70%); }
 .signin-map, .signin-side { position: relative; z-index: 1; }
-.signin-map { color: #fff; min-height: 260px; }
+.signin-map { color: #fff; min-height: 380px; display: grid; grid-template-rows: minmax(160px, 1fr) auto; gap: 20px; padding: calc(88px + env(safe-area-inset-top)) 28px 32px; }
+.signin-route-area { min-width: 0; min-height: 160px; pointer-events: none; }
 .signin-map .logo { position: absolute; z-index: 2; top: calc(24px + env(safe-area-inset-top)); left: 28px; }
 .signin-map .logo-bg { fill: rgba(255, 255, 255, .16); }
-.signin-copy { position: absolute; z-index: 2; left: 28px; right: 28px; bottom: 32px; display: grid; gap: 12px; }
+.signin-copy { position: relative; z-index: 2; display: grid; gap: 12px; }
 .signin-tag { display: inline-flex; align-items: center; gap: 12px; font: italic 400 clamp(17px, 1.6vw, 21px)/1.2 var(--serif); font-optical-sizing: auto; letter-spacing: 0; color: #aac6ff; }
 .signin-tag::before { content: ""; width: 26px; height: 2px; border-radius: 2px; background: var(--accent); }
 .signin-copy h1 { font-size: clamp(30px, 4.4vw, 54px); line-height: 1.02; margin: 0; }
@@ -190,21 +191,32 @@ tbody tr:last-child td { border-bottom: 0; }
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
 .signin-form h2 { font-size: 32px; }
+.signin-heading .signin-eyebrow { display: block; margin-bottom: 13px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.signin-heading h2 .su-line + .su-line { color: var(--brand); }
+.signin-heading p { margin-top: 12px; }
 .signin-form form { display: grid; gap: 16px; }
 .signin-form .field input { padding: 13px 14px; font-size: 16px; background: var(--bg); }
 .pw { position: relative; display: block; } .pw input { padding-right: 46px; }
 .pw button { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); border: 0; background: none; padding: 9px; color: var(--muted); }
 .pw button:active:not(:disabled) { transform: translateY(-50%); }
-.go { position: relative; overflow: hidden; min-height: 50px; font-size: 16px; }
-.go::after { content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .35), transparent); transform: skewX(-20deg); }
-.go:hover:not(:disabled)::after, .go:focus-visible::after { animation: go-shine .9s ease; }
-.go:hover:not(:disabled) .icon, .go:focus-visible .icon { animation: go-nudge .9s ease-in-out infinite; }
-@keyframes go-shine { to { left: 120%; } }
-@keyframes go-nudge { 50% { transform: translateX(5px); } }
+/* Azul em movimento: o círculo se espalha sem alterar o tamanho do botão. */
+.signin-submit { --submit-blue: #4688ff; position: relative; isolation: isolate; overflow: hidden; width: 100%; height: 54px; padding: 0 56px; border: 1px solid color-mix(in srgb, var(--submit-blue) 70%, transparent); border-radius: 999px; background: light-dark(#1e4ca5, #193f7b); color: #fff; font-size: 15px; font-weight: 600; transition: transform .18s, box-shadow .25s; }
+.signin-submit::before { content: ""; position: absolute; z-index: -1; left: 4px; top: 4px; width: 44px; height: 44px; border-radius: 50%; background: var(--submit-blue); transition: transform .54s cubic-bezier(.2, .7, .2, 1); }
+.signin-submit:is(:hover, :focus-visible, [aria-busy="true"])::before { transform: scale(18); }
+.signin-submit:is(:hover, :focus-visible):not(:disabled) { box-shadow: 0 5px 22px color-mix(in srgb, var(--submit-blue) 28%, transparent); }
+.signin-submit-icon { position: absolute; left: 0; top: 0; width: 52px; height: 52px; display: grid; place-items: center; }
+.signin-submit-icon .icon { transition: transform .3s; }
+.signin-submit:is(:hover, :focus-visible):not(:disabled) .icon { transform: translateX(3px); }
+.signin-submit-label { position: relative; white-space: nowrap; }
+.signin-submit:disabled { opacity: 1; cursor: wait; }
+.signin-submit-spinner { width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, .38); border-top-color: #fff; border-radius: 50%; animation: signin-spin .7s linear infinite; }
+@keyframes signin-spin { to { transform: rotate(360deg); } }
 @media (max-width: 860px) {
-  .signin { grid-template-columns: 1fr; grid-template-rows: minmax(260px, 38vh) 1fr; }
+  .signin { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .signin::after { inset: 0; background: linear-gradient(transparent 10%, rgba(6, 17, 43, .9) max(260px, 38vh)); }
-  .signin-copy { bottom: 22px; left: 20px; right: 20px; } .signin-copy p { display: none; }
+  .signin-map { min-height: max(360px, 42svh); grid-template-rows: minmax(150px, 1fr) auto; padding: calc(76px + env(safe-area-inset-top)) 20px 22px; gap: 16px; }
+  .signin-route-area { min-height: 150px; }
+  .signin-copy p { display: none; }
   .signin-map .logo { left: 20px; }
   .signin-side { place-items: start center; padding: 16px 16px 28px; }
   .signin-form { padding: 24px 20px; }
@@ -355,6 +367,7 @@ textarea { font: inherit; padding: 9px 11px; border: 1px solid var(--line); bord
 @media (max-width: 800px) { .track { grid-template-columns: 1fr; } .track-map { height: 360px; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .su-word, .go::after, .go .icon, .hold[data-state="done"] { animation: none !important; }
+  .su-word, .signin-submit-spinner, .hold[data-state="done"] { animation: none !important; }
+  .signin-submit::before, .signin-submit-icon .icon { transition: none; }
   button, .tile { transition: none; }
 }
