@@ -5,12 +5,13 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "lint": "biome lint apps packages",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "demo": "npx serve reference/demo-original"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.8",
     "turbo": "^2.0.0",
     "typescript": "^5.6.0"
   }

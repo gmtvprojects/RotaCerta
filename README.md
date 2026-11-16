@@ -18,6 +18,7 @@ Detalhes em [docs/funcionalidades.md](docs/funcionalidades.md).
 apps/web           app web (Vite + React + TS): todos os perfis, dados fixos por enquanto
 apps/api           API (Fastify + PostgreSQL + Drizzle): auth por perfil, regras, WebSocket
 packages/domain    regras de negócio puras, tipos, papéis, permissões e dados fixos (seed)
+packages/contracts contratos HTTP compartilhados e schemas Zod de entrada/saída
 reference/         demo original (somente referência, não faz parte do build)
 docs/              documentação (arquitetura e padrões em docs/arquitetura.md)
 ```
@@ -34,6 +35,7 @@ Fluxo: `feature/*` → `dev` → `hml` → `prod`, sempre por Pull Request.
 ## Rodando
 ```bash
 pnpm install
+pnpm lint
 pnpm typecheck
 pnpm --filter @rotacerta/web dev   # http://localhost:5173
 pnpm test                                # testes da API (sem Docker)
