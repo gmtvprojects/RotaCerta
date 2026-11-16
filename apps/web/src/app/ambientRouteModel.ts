@@ -80,13 +80,17 @@ export function buildRoads(width: number, height: number, blocks: Rect[], header
 
 const inZone = (r: Roads, k: number, zone: Zone) => { const x = r.xs[k % r.xs.length]!; return x >= zone.minX && x <= zone.maxX; };
 
+/** Abaixo desta largura (a mesma em que a doca e as tabelas mudam para o celular) há uma rota só. */
+export const NARROW = 720;
+
 /**
  * Duas rotas ao mesmo tempo: metade esquerda e metade direita, com uma faixa neutra no meio
  * (8% da largura de cada lado do centro, entre 50 e 140px). Nenhuma das duas entra nela, então as setas
  * nunca se cruzam e ficam sempre a pelo menos o dobro dessa folga de distância.
- * Sem espaço para as duas, uma rota só usa a tela inteira.
+ * Em tela estreita, ou sem espaço para as duas, uma rota só usa a tela inteira.
  */
 export function splitZones(r: Roads): Zone[] {
+  if (r.width < NARROW) return [FULL_ZONE];
   const mid = r.width / 2, buffer = Math.max(50, Math.min(140, r.width * .08));
   const zones = [{ minX: -Infinity, maxX: mid - buffer }, { minX: mid + buffer, maxX: Infinity }];
   return zones.every(z => r.destinations.filter(k => inZone(r, k, z)).length >= 2) ? zones : [FULL_ZONE];
@@ -204,7 +208,12 @@ export class AmbientRoute {
   }
   private inView(p: Point, pad = 0) { return p.y >= this.view.top + pad && p.y <= this.view.bottom - pad; }
   private hidden(p: Point) { return p.y < this.view.outerTop - 14 || p.y > this.view.outerBottom + 14; }
+  /**
+   * Evita paradas coladas na borda da tela. Em tela estreita não: ao lado de um bloco longo (uma lista,
+   * uma tabela) as margens são as únicas ruas que descem com a página, e sem elas a seta ficaria presa no topo.
+   */
   private interior(nodes: number[]) {
+    if (this.roads.width < NARROW) return nodes;
     const inner = nodes.filter(k => { const x = nodePoint(this.roads, k).x; return x >= 30 && x <= this.roads.width - 30; });
     return inner.length ? inner : nodes;
   }

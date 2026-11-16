@@ -147,9 +147,15 @@ button.m-row:active:not(:disabled) { transform: none; background: var(--sunk); }
 @media (max-width: 720px) {
   .m-list { display: block; }
   .table-wrap.has-cards { display: none; }
-  .bar.pinned { position: sticky; bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 5; display: grid; grid-template-columns: 1fr 1fr; margin: 10px -12px -12px; padding: 12px; border-radius: 16px; background: var(--card); box-shadow: 0 -10px 24px -18px rgba(8, 23, 53, .5); }
-  .bar.pinned select { width: 100%; min-width: 0; }
-  .bar.pinned button { grid-column: 1 / -1; }
+  /* Com entregas marcadas, a barra vira um painel da mesma família da doca: sai do fundo da lista e lê como "próximo passo". */
+  /* A base do painel entra 15px por trás da doca: sem fresta entre os dois por onde a lista apareça. */
+  .bar.pinned { position: sticky; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 5; display: grid; grid-template-columns: 1fr 1fr; margin: 12px -10px -10px; padding: 12px 12px 27px; border-radius: 20px; background: linear-gradient(135deg, var(--deep), var(--deep-2)); box-shadow: var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, .1); animation: bar-in .32s cubic-bezier(.16, 1, .3, 1) both; }
+  .bar.pinned label { color: var(--on-deep); }
+  .bar.pinned select { width: 100%; min-width: 0; background: rgba(255, 255, 255, .09); border-color: rgba(255, 255, 255, .16); color: #fff; }
+  .bar.pinned option { background: var(--card); color: var(--ink); }
+  .bar.pinned button { grid-column: 1 / -1; background: var(--accent); color: var(--accent-ink); }
+  @keyframes bar-in { from { opacity: 0; transform: translateY(12px); } }
+  @media (prefers-reduced-motion: reduce) { .bar.pinned { animation: none; } }
   /* Tabelas que continuam tabela: colunas no tamanho natural, primeira coluna fixa e sombra indicando que dá para rolar. */
   .table-wrap {
     background:

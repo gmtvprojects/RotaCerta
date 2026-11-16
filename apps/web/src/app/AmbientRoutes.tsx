@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AmbientRoute, CONFIRM_SECONDS, TRAIL_SECONDS, buildRoads, clamp, splitZones, type Rect, type View } from './ambientRouteModel';
 
 /**
- * Fundo transparente da operação. Duas rotas, cada uma na sua metade da tela (ver `splitZones`).
+ * Fundo transparente da operação. Duas rotas em telas largas, cada uma na sua metade; uma só no celular (ver `splitZones`).
  * Elas vivem em coordenadas da página: ao rolar, rolam junto com o conteúdo (sem apagar nem recomeçar).
  * Os blocos e controles nunca recebem eventos da animação.
  */

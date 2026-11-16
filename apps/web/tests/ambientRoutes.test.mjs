@@ -136,8 +136,25 @@ test('mudança de layout mantém a seta no lugar quando a rua continua livre', (
   assert.equal(route.completed, 1);
 });
 
+test('no celular há uma rota só, e ela desce pelas margens ao lado da lista', () => {
+  for (const [width, height, blocks] of layouts.filter(([w]) => w < 720)) {
+    const roads = buildRoads(width, height, blocks, 62, height);
+    assert.deepEqual(splitZones(roads).map(z => [z.minX, z.maxX]), [[-Infinity, Infinity]]);
+    const route = new AmbientRoute(roads, random(23), view(0, height));
+    const ys = new Set();
+    let margins = 0;
+    for (let i = 0; i < 200; i++) {
+      if (route.destination.y > blocks[blocks.length - 1].y) ys.add(Math.round(route.destination.y / 100));
+      if (route.destination.x < 20 || route.destination.x > width - 20) margins++;
+      route.position = { ...route.destination }; route.plan(route.target);
+    }
+    assert.ok(margins >= 100, `${width}px: só ${margins} paradas nas margens`);
+    assert.ok(ys.size >= 3, `${width}px: a rota não desce ao lado da lista (${ys.size} alturas)`);
+  }
+});
+
 test('duas rotas, uma em cada metade, nunca entram na faixa neutra nem se aproximam', () => {
-  for (const [width, height, blocks] of layouts) {
+  for (const [width, height, blocks] of layouts.filter(([w]) => w >= 720)) {
     const roads = buildRoads(width, height, blocks, 62, height);
     const zones = splitZones(roads);
     assert.equal(zones.length, 2, `${width}px deveria ter duas rotas`);
