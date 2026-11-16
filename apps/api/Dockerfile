@@ -6,9 +6,11 @@ RUN corepack enable
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/domain/package.json packages/domain/
+COPY packages/contracts/package.json packages/contracts/
 COPY apps/api/package.json apps/api/
 RUN pnpm install --frozen-lockfile --filter @rotacerta/api...
 COPY packages/domain packages/domain
+COPY packages/contracts packages/contracts
 COPY apps/api apps/api
 RUN pnpm --filter @rotacerta/api build
 
@@ -18,6 +20,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/domain/package.json packages/domain/
+COPY packages/contracts/package.json packages/contracts/
 COPY apps/api/package.json apps/api/
 RUN pnpm install --frozen-lockfile --prod --filter @rotacerta/api...
 COPY --from=build /repo/apps/api/dist apps/api/dist
