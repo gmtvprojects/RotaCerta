@@ -1,13 +1,13 @@
-import type { AnyRole, Dataset, PaperForm } from '@rotacerta/domain';
+import {
+  sessionResponse, snapshotResponse, wsTicketResponse,
+  type Session, type Snapshot,
+} from '@rotacerta/contracts';
+import type { ZodType } from 'zod';
+
+export type { Session, SessionUser, Snapshot } from '@rotacerta/contracts';
 
 /** Endereço da API. Em produção vem do build (`VITE_API_URL`); local, aponta para a API de desenvolvimento. */
 export const API_URL: string = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3333';
-
-/** `companyId` é nulo só para o perfil `plataforma`. */
-export interface SessionUser { sub: number; name: string; role: AnyRole; companyId: number | null; driverId: number | null }
-export interface Snapshot { data: Dataset; papers: PaperForm[] }
-/** `mustChangePassword`: a senha foi definida por outra pessoa e precisa ser trocada antes de usar o sistema. */
-export interface Session { token: string; user: SessionUser; mustChangePassword: boolean }
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
@@ -37,11 +37,14 @@ async function raw(method: string, path: string, body?: unknown, auth = true): P
   }
 }
 
-async function parse<T>(res: Response): Promise<T> {
+async function parse<T>(res: Response, schema?: ZodType<T>): Promise<T> {
   if (res.status === 204) return undefined as T;
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError((json as { error?: string }).error ?? 'Não foi possível concluir a operação.', res.status);
-  return json as T;
+  if (!schema) return json as T;
+  const parsed = schema.safeParse(json);
+  if (!parsed.success) throw new ApiError('O servidor devolveu dados em um formato incompatível.', 502);
+  return parsed.data;
 }
 
 /**
@@ -54,7 +57,7 @@ export function renewSession(): Promise<Session | null> {
     try {
       const res = await raw('POST', '/auth/refresh', undefined, false);
       if (res.status === 401 || res.status === 403) { token = null; return null; }
-      const session = await parse<Session>(res);
+      const session = await parse(res, sessionResponse);
       token = session.token;
       return session;
     } finally {
@@ -76,7 +79,7 @@ export async function call<T = unknown>(method: 'GET' | Req['method'], path: str
 export const send = (r: Req) => call(r.method, r.path, r.body);
 
 export async function login(email: string, password: string): Promise<Session> {
-  const session = await parse<Session>(await raw('POST', '/auth/login', { email, password }, false));
+  const session = await parse(await raw('POST', '/auth/login', { email, password }, false), sessionResponse);
   token = session.token;
   return session;
 }
@@ -86,10 +89,16 @@ export async function logout(): Promise<void> {
   token = null;
 }
 
-export const fetchSnapshot = () => call<Snapshot>('GET', '/dataset');
+export async function fetchSnapshot(): Promise<Snapshot> {
+  let res = await raw('GET', '/dataset');
+  if (res.status === 401 && await renewSession()) res = await raw('GET', '/dataset');
+  return parse(res, snapshotResponse);
+}
 
 /** Abre o canal em tempo real com um ticket de 30 s, sem colocar o token de acesso na URL. */
 export async function openSocket(): Promise<WebSocket> {
-  const { ticket } = await call<{ ticket: string }>('POST', '/auth/ws-ticket');
+  let res = await raw('POST', '/auth/ws-ticket');
+  if (res.status === 401 && await renewSession()) res = await raw('POST', '/auth/ws-ticket');
+  const { ticket } = await parse(res, wsTicketResponse);
   return new WebSocket(`${API_URL.replace(/^http/, 'ws')}/api/ws?ticket=${encodeURIComponent(ticket)}`);
 }

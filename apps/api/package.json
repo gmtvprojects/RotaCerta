@@ -25,6 +25,7 @@
     "@fastify/rate-limit": "^11.2.2",
     "@fastify/websocket": "^11.3.6",
     "@rotacerta/domain": "workspace:*",
+    "@rotacerta/contracts": "workspace:*",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.8",
     "pg": "^8.23.1",
