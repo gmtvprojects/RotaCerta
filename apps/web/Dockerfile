@@ -6,9 +6,11 @@ RUN corepack enable
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/domain/package.json packages/domain/
+COPY packages/contracts/package.json packages/contracts/
 COPY apps/web/package.json apps/web/
 RUN pnpm install --frozen-lockfile --filter @rotacerta/web...
 COPY packages/domain packages/domain
+COPY packages/contracts packages/contracts
 COPY apps/web apps/web
 # a URL da API entra no build (o Vite embute no JavaScript); o Railway repassa as variáveis do serviço como argumentos
 ARG VITE_API_URL
