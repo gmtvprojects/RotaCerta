@@ -237,9 +237,11 @@ variável `RAILWAY_DOCKERFILE_PATH`, e o health check fica em *Settings → Depl
 
 | Serviço | `RAILWAY_DOCKERFILE_PATH` | Healthcheck | Variáveis principais |
 |---|---|---|---|
-| `api` | `apps/api/Dockerfile` | `/ready` | `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `CORS_ORIGIN`, `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true`, `NODE_ENV=production` |
+| `api` | `apps/api/Dockerfile` | `/ready` | `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `CORS_ORIGIN`, `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true`, `AMBIENTE_PRODUCAO=true` (ou `AMBIENTE_TESTE=true` num ambiente de demonstração; exatamente um) |
 | `web` | `apps/web/Dockerfile` | `/` | `VITE_API_URL` (usada no build; sem barra no final) |
 
+- Sem `AMBIENTE_TESTE` / `AMBIENTE_PRODUCAO` a API não sobe ("Ative exatamente um ambiente"). `NODE_ENV` não precisa
+  ser definido: o ambiente ativo decide.
 - A API aplica as migrações ao subir e responde `/ready` (200 só com o banco acessível).
 - O site é estático (nginx) com fallback para `index.html`; `sw.js` e o manifesto são servidos com `no-cache`.
 - Banco vazio em produção (sem seed): crie o **administrador da plataforma** com `ADMIN_NAME`, `ADMIN_EMAIL`,
