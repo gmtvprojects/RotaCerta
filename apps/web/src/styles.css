@@ -64,7 +64,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand); out
 .brand { display: flex; flex-direction: column; } .brand strong { font: 700 20px var(--display); } .brand small { opacity: .7; }
 
 /* Casca: barra do topo + doca flutuante (igual no computador e no celular) */
-.shell { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.shell { position: relative; isolation: isolate; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.ambient-routes { position: fixed; inset: 0; z-index: -1; width: 100%; height: 100dvh; pointer-events: none; }
+@media print { .ambient-routes { display: none; } }
 .topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 10px max(20px, env(safe-area-inset-left)); background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
 .topbar .grow { flex: 1; }
 .logo-link { color: inherit; text-decoration: none; display: flex; }

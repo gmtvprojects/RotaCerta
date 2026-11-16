@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ALLOWED_PAGES, ORDER_STATUS_LABELS, ROLE_HOME, ROLE_LABELS, canAccess, type Page, type Role } from '@rotacerta/domain';
 import { Icon, Logo, type IconName } from './icons';
@@ -24,6 +24,8 @@ import { Clientes } from '../pages/Clientes';
 import { ForcePassword } from '../pages/ForcePassword';
 import { PlatformApp } from '../pages/Plataforma';
 import { OrderDetail } from '../pages/OrderDetail';
+
+const AmbientRoutes = lazy(() => import('./AmbientRoutes').then(m => ({ default: m.AmbientRoutes })));
 
 interface PageDef { page: Page; path: string; label: string; element: JSX.Element; hidden?: boolean }
 
@@ -150,6 +152,7 @@ export function App() {
 
   return (
     <div className={`shell ${tour.active ? 'with-tour' : ''}`}>
+      <Suspense fallback={null}><AmbientRoutes pageKey={pathname} /></Suspense>
       <header className="topbar">
         <Link to={homePath(role)} className="logo-link" aria-label="RotaCerta, início"><Logo /></Link>
         <span className="grow" />
