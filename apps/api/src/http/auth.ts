@@ -20,7 +20,7 @@ const toAuth = (u: UserRow): AuthUser => ({ sub: u.id, name: u.name, role: u.rol
 export const toDto = (u: UserRow) => ({ id: u.id, name: u.name, email: u.email, role: u.role, roleLabel: ANY_ROLE_LABELS[u.role], driverId: u.driverId, active: u.active, createdAt: u.createdAt });
 
 export function registerAuthRoutes({ app, db, config, guard, company }: Ctx) {
-  const secure = (config.COOKIE_SECURE ?? String(config.NODE_ENV === 'production')) === 'true';
+  const secure = (config.COOKIE_SECURE ?? String(config.APP_ENV === 'production')) === 'true';
   if (config.COOKIE_SAMESITE === 'none' && !secure) throw new Error('COOKIE_SAMESITE=none exige COOKIE_SECURE=true (HTTPS).');
 
   const setCookie = (reply: FastifyReply, raw: string) => reply.setCookie(COOKIE, raw, {
