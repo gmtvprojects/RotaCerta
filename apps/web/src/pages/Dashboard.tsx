@@ -17,6 +17,7 @@ export function Dashboard() {
     ['Entregues', count('delivered')],
   ] as const;
   const failed = count('failed');
+  const recent = data.orders.slice(0, 12);
 
   return (
     <>
@@ -32,19 +33,30 @@ export function Dashboard() {
       <p className="muted small">{data.orders.length} entregas no total{failed > 0 ? ` · ${failed} não entregue(s), aguardando nova tentativa` : ''}.</p>
       <section className="card">
         <h2>Entregas</h2>
-        <div className="table-wrap">
+        <div className="table-wrap has-cards">
           <table>
             <thead><tr><th>Entrega / cliente</th><th>Bairro</th><th>Horário</th><th>Volumes</th><th>Status</th><th /></tr></thead>
             <tbody>
-              {data.orders.slice(0, 12).map((o) => (
+              {recent.map((o) => (
                 <tr key={o.id}>
-                  <td><strong>#{o.id}</strong> {o.name}</td><td>{o.neighborhood}</td><td>{o.window}</td>
+                  <td><strong>#{o.id}</strong> {o.name}</td><td>{o.neighborhood}</td><td className="nowrap">{o.window}</td>
                   <td>{o.boxes.length}</td><td><OrderPill status={o.status} /></td><td><button type="button" onClick={() => setOpenId(o.id)}>Detalhes</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <ul className="m-list">
+          {recent.map((o) => (
+            <li key={o.id}>
+              <button type="button" className="m-row" onClick={() => setOpenId(o.id)} aria-label={`Detalhes da entrega #${o.id}, ${o.name}`}>
+                <span className="m-title"><span className="m-code">#{o.id}</span>{o.name}</span>
+                <span className="m-end"><OrderPill status={o.status} /></span>
+                <span className="m-sub">{o.neighborhood} · <span className="nowrap">{o.window}</span> · {o.boxes.length} vol.</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </section>
       {openId != null && <OrderDetail orderId={openId} onClose={() => setOpenId(null)} />}
     </>

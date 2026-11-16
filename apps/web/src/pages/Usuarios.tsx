@@ -145,7 +145,7 @@ export function Auditoria() {
               <tr key={r.id}>
                 <td>{new Date(r.at).toLocaleString('pt-BR')}</td>
                 <td>{r.userName ?? '—'}</td>
-                <td>{r.action}{r.target && r.target !== '{}' ? <span className="muted small"> {r.target}</span> : null}</td>
+                <td className="wrap">{r.action}{r.target && r.target !== '{}' ? <span className="muted small"> {r.target}</span> : null}</td>
                 <td><span className={`pill ${r.status && r.status >= 400 ? 'amber' : 'green'}`}>{r.status ?? '—'}</span></td>
                 <td className="muted small">{r.ip}</td>
               </tr>

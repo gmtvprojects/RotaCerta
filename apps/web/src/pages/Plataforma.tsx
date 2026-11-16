@@ -359,7 +359,7 @@ function Auditoria() {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id}>
-                    <td>{when(r.at)}</td><td>{nameOf(r.companyId)}</td><td>{r.userName ?? '—'}</td><td>{r.action}</td><td>{r.target ?? ''}</td><td>{r.status ?? ''}</td>
+                    <td>{when(r.at)}</td><td>{nameOf(r.companyId)}</td><td>{r.userName ?? '—'}</td><td>{r.action}</td><td className="wrap">{r.target ?? ''}</td><td>{r.status ?? ''}</td>
                   </tr>
                 ))}
               </tbody>
