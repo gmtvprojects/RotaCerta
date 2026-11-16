@@ -1,7 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ALLOWED_PAGES, ORDER_STATUS_LABELS, ROLE_HOME, ROLE_LABELS, canAccess, type Page, type Role } from '@rotacerta/domain';
+import { motion } from 'motion/react';
 import { Icon, Logo, type IconName } from './icons';
+import { SPRING, Stage } from './motion';
 import { Palette, type PaletteItem } from './Palette';
 import { useStore } from './store';
 import { TourBar, useTour } from './tour';
@@ -27,7 +29,8 @@ const PlatformApp = lazy(() => import('../pages/Plataforma').then((m) => ({ defa
 const OrderDetail = lazy(() => import('../pages/OrderDetail').then((m) => ({ default: m.OrderDetail })));
 
 const loading = <div className="login"><section className="login-card"><Logo sub="Gestão de entregas" /><p className="muted">Carregando…</p></section></div>;
-const deferred = (content: ReactNode) => <Suspense fallback={loading}>{content}</Suspense>;
+const deferred = (content: ReactNode) => <Suspense fallback={loading}><Stage>{content}</Stage></Suspense>;
+const MotionLink = motion.create(Link);
 
 interface PageDef { page: Page; path: string; label: string; element: JSX.Element; hidden?: boolean }
 
@@ -149,20 +152,25 @@ export function App() {
   const dock = DOCK[role];
   const middle = Math.ceil(dock.links.length / 2);
   const dockLink = (l: DockLink) => (
-    <NavLink key={l.to} to={l.to} className={({ isActive }) => (isActive ? 'active' : '')}><Icon name={l.icon} /><span>{l.label}</span></NavLink>
+    <NavLink key={l.to} to={l.to} className={({ isActive }) => (isActive ? 'active' : '')}>
+      {({ isActive }) => <>
+        {isActive && <motion.span layoutId="dock-pill" className="dock-pill" transition={SPRING} />}
+        <Icon name={l.icon} /><span>{l.label}</span>
+      </>}
+    </NavLink>
   );
 
   return (
     <div className={`shell ${tour.active ? 'with-tour' : ''}`}>
-      <header className="topbar">
+      <motion.header className="topbar" initial={{ y: -24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={SPRING}>
         <Link to={homePath(role)} className="logo-link" aria-label="RotaCerta, início"><Logo /></Link>
         <span className="grow" />
         <span className="role-tag">{ROLE_LABELS[role]}</span>
         {canAccess(role, 'notificacoes') && (
           <NavLink to="/notificacoes" className={({ isActive }) => `iconbtn ${isActive ? 'active' : ''}`} aria-label="Notificações"><Icon name="bell" /></NavLink>
         )}
-        <Link to="/perfil" className="avatar" aria-label={`Perfil de ${user.name}`}>{initials(user.name)}</Link>
-      </header>
+        <MotionLink to="/perfil" className="avatar" aria-label={`Perfil de ${user.name}`} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}>{initials(user.name)}</MotionLink>
+      </motion.header>
       <main className="main">
         {problem && <div className="banner error" role="alert">{problem} <button type="button" onClick={clearProblem}>Fechar</button></div>}
         <Routes>
@@ -171,12 +179,12 @@ export function App() {
         </Routes>
       </main>
       <TourBar />
-      <nav className="dock" aria-label="Navegação principal">
+      <motion.nav className="dock" aria-label="Navegação principal" initial={{ y: 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ ...SPRING, delay: 0.15 }}>
         {dock.links.slice(0, middle).map(dockLink)}
-        <Link to={dock.action.to} className="dock-act"><Icon name={dock.action.icon} /><span>{dock.action.label}</span></Link>
+        <MotionLink to={dock.action.to} className="dock-act" whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }}><Icon name={dock.action.icon} /><span>{dock.action.label}</span></MotionLink>
         {dock.links.slice(middle).map(dockLink)}
         <button type="button" onClick={() => setSearching(true)} aria-haspopup="dialog"><Icon name="search" /><span>Buscar</span><kbd>Ctrl K</kbd></button>
-      </nav>
+      </motion.nav>
       {searching && <Palette items={paletteItems} search={searchOrders} onClose={() => setSearching(false)} />}
       {orderId != null && deferred(<OrderDetail orderId={orderId} onClose={() => setOrderId(null)} />)}
     </div>

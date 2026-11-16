@@ -1,4 +1,5 @@
 import { StrictMode } from 'react';
+import { MotionConfig } from 'motion/react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { App } from './app/App';
@@ -13,6 +14,7 @@ import './styles.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <MotionConfig reducedMotion="user">
     <PwaProvider>
       <StoreProvider>
         <HashRouter>
@@ -22,5 +24,6 @@ createRoot(document.getElementById('root')!).render(
         </HashRouter>
       </StoreProvider>
     </PwaProvider>
+    </MotionConfig>
   </StrictMode>,
 );

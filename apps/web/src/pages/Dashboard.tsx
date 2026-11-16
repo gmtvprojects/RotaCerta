@@ -1,5 +1,7 @@
+import { motion } from 'motion/react';
 import { useState } from 'react';
 import { useStore } from '../app/store';
+import { CountUp, EASE } from '../app/motion';
 import { OrderDetail } from './OrderDetail';
 import { Header, OrderPill } from './ui';
 
@@ -24,8 +26,8 @@ export function Dashboard() {
       <section className="card flow" aria-label="Fluxo das entregas de hoje">
         {flow.map(([label, value], i) => (
           <div key={label} className={`flow-step ${i === flow.length - 1 ? 'end' : ''}`}>
-            <strong>{value}</strong><span>{label}</span>
-            <i><b style={{ width: `${(value / total) * 100}%` }} /></i>
+            <strong><CountUp value={value} /></strong><span>{label}</span>
+            <i><motion.b initial={{ width: 0 }} animate={{ width: `${(value / total) * 100}%` }} transition={{ duration: 0.9, ease: EASE, delay: 0.2 + i * 0.08 }} /></i>
           </div>
         ))}
       </section>

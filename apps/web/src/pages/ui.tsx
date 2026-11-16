@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { ORDER_STATUS_LABELS, ROUTE_STATUS_LABELS, type Order, type Route } from '@rotacerta/domain';
+import { motion } from 'motion/react';
 import { Icon } from '../app/icons';
+import { SPRING } from '../app/motion';
 import { SlideUpText } from '../app/SlideUpText';
 
 export function Header({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
@@ -30,14 +32,14 @@ export const Empty = ({ children }: { children: ReactNode }) => <div className="
 
 export function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   return (
-    <div className="backdrop" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
+    <motion.div className="backdrop" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
+      <motion.div className="modal" initial={{ opacity: 0, y: 28, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={SPRING} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
         <h2>{title}</h2>
         <div className="modal-body">{children}</div>
         <div className="modal-foot">{footer}</div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

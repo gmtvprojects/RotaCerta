@@ -358,3 +358,75 @@ textarea { font: inherit; padding: 9px 11px; border: 1px solid var(--line); bord
   .su-word, .go::after, .go .icon, .hold[data-state="done"] { animation: none !important; }
   button, .tile { transition: none; }
 }
+
+/* ===== Camada visual e de movimento (telas internas; o login não é afetado) ===== */
+:root { --ring: color-mix(in srgb, var(--brand) 35%, transparent); --lift: 0 1px 2px rgba(8, 23, 53, .05), 0 14px 32px -16px rgba(8, 23, 53, .22); }
+@media (prefers-color-scheme: dark) { :root { --lift: 0 1px 2px rgba(0, 0, 0, .3), 0 14px 32px -16px rgba(0, 0, 0, .6); } }
+
+/* fundo com luz suave nos cantos */
+.shell {
+  background:
+    radial-gradient(900px 480px at 8% -8%, color-mix(in srgb, var(--grad-b) 14%, transparent), transparent 70%),
+    radial-gradient(760px 420px at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* barra do topo em vidro */
+.shell .topbar { backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); }
+.shell .role-tag { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.shell .avatar { box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--grad-a) 70%, transparent); }
+
+/* quadros: sombra suave e leve elevação ao passar o mouse */
+.shell .card { box-shadow: var(--lift); transition: border-color .2s, transform .25s cubic-bezier(.16, 1, .3, 1), box-shadow .25s; }
+@media (hover: hover) {
+  .shell .card:hover { border-color: color-mix(in srgb, var(--brand) 30%, var(--line)); }
+  .shell .card.kpi:hover, .shell .tile:hover { transform: translateY(-3px); }
+}
+.shell .kpi strong { background: linear-gradient(135deg, var(--grad-a), var(--grad-b)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.shell .flow-step { transition: background .2s; border-radius: 14px; }
+.shell .flow-step:hover { background: var(--sunk); }
+.shell .flow-step strong { font-variant-numeric: tabular-nums; }
+
+/* tabelas e listas */
+.shell tbody tr { transition: background .15s; }
+.shell tbody tr:hover { background: color-mix(in srgb, var(--brand-soft) 55%, transparent); }
+.shell .stops li { transition: background .15s, padding .2s; border-radius: 10px; }
+.shell .stops li:hover { background: color-mix(in srgb, var(--brand-soft) 45%, transparent); padding-inline: 8px; }
+
+/* etiquetas de status com ponto */
+.shell .pill::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; vertical-align: 1px; opacity: .85; }
+
+/* botões */
+.shell button.primary, .shell .btn.primary { box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--grad-a) 80%, transparent); transition: transform .15s, box-shadow .2s, filter .2s; }
+@media (hover: hover) {
+  .shell button.primary:hover:not(:disabled), .shell .btn.primary:hover { transform: translateY(-1px); filter: brightness(1.07); box-shadow: 0 12px 22px -8px color-mix(in srgb, var(--grad-a) 85%, transparent); }
+}
+.shell button:focus-visible, .shell a:focus-visible { outline-offset: 3px; box-shadow: 0 0 0 4px var(--ring); }
+
+/* doca: centralizada sem transform (o movimento da entrada usa transform) e com indicador que desliza */
+.dock { left: 0; right: 0; margin-inline: auto; width: max-content; transform: none; background: linear-gradient(135deg, color-mix(in srgb, var(--deep) 94%, transparent), color-mix(in srgb, var(--deep-2) 94%, transparent)); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 20px 40px -12px rgba(4, 12, 32, .55), inset 0 0 0 1px rgba(255, 255, 255, .1); }
+@media (max-width: 720px) { .dock { left: 12px; right: 12px; width: auto; margin-inline: 0; } }
+.dock a, .dock button { position: relative; transition: color .2s; }
+.dock .active { background: none; }
+.dock-pill { position: absolute; inset: 0; border-radius: 16px; background: rgba(255, 255, 255, .15); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
+.dock a > :not(.dock-pill), .dock button > * { position: relative; }
+.dock .icon { transition: transform .25s cubic-bezier(.16, 1, .3, 1); }
+@media (hover: hover) { .dock a:hover .icon, .dock button:hover .icon { transform: translateY(-2px) scale(1.12); } }
+.dock .dock-act { box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--accent) 80%, transparent); }
+
+/* janelas e busca: fundo desfocado */
+.backdrop, .palette-back { backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+.modal, .palette { box-shadow: 0 30px 70px -20px rgba(4, 12, 32, .6); }
+.palette-item { transition: background .12s; }
+
+/* barras de progresso com brilho que passa */
+.bar-track i, .flow-step i b { position: relative; overflow: hidden; }
+.bar-track i::after, .flow-step i b::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .45) 50%, transparent 70%); transform: translateX(-100%); animation: bar-shine 2.8s ease-in-out 1.2s infinite; }
+@keyframes bar-shine { to { transform: translateX(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-track i::after, .flow-step i b::after { animation: none; }
+  .shell .card, .shell .stops li, .dock .icon { transition: none; transform: none !important; }
+}
+.shell strong > .count { font: inherit; color: inherit; font-size: inherit; }

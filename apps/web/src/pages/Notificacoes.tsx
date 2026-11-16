@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Notification } from '@rotacerta/domain';
 import { useStore } from '../app/store';
+import { CountUp } from '../app/motion';
 import { Header } from './ui';
 
 const STATUS: Record<Notification['status'], [string, string]> = {
@@ -27,9 +28,9 @@ export function Notificacoes() {
         <div className="card-head"><h2>WhatsApp automático por evento</h2><span className="pill amber">API não conectada · simulação</span></div>
         <p className="muted small">Uma entrega concluída aciona o aviso da próxima parada. Sem envio real e com telefones fictícios.</p>
         <div className="kpis">
-          <div className="card kpi"><span className="muted">Avisos simulados</span><strong>{count('delivered')}</strong></div>
-          <div className="card kpi"><span className="muted">Falhas simuladas</span><strong>{count('failed')}</strong><span className="muted small">Disponíveis para novo teste</span></div>
-          <div className="card kpi"><span className="muted">Sem autorização</span><strong>{count('skipped')}</strong><span className="muted small">Aviso não disparado</span></div>
+          <div className="card kpi"><span className="muted">Avisos simulados</span><strong><CountUp value={count('delivered')} /></strong></div>
+          <div className="card kpi"><span className="muted">Falhas simuladas</span><strong><CountUp value={count('failed')} /></strong><span className="muted small">Disponíveis para novo teste</span></div>
+          <div className="card kpi"><span className="muted">Sem autorização</span><strong><CountUp value={count('skipped')} /></strong><span className="muted small">Aviso não disparado</span></div>
         </div>
       </section>
       {error && <div className="banner" role="alert">{error}</div>}

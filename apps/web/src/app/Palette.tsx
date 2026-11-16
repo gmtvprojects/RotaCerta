@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'motion/react';
+import { SPRING } from './motion';
 import { Icon, type IconName } from './icons';
 
 export interface PaletteItem { key: string; group: string; label: string; hint?: string; icon: IconName; run: () => void }
@@ -26,8 +28,8 @@ export function Palette({ items, search, onClose }: { items: PaletteItem[]; sear
   const pick = (item?: PaletteItem) => { if (item) { onClose(); item.run(); } };
 
   return (
-    <div className="palette-back" onClick={onClose}>
-      <div className="palette" role="dialog" aria-modal="true" aria-label="Buscar" onClick={(e) => e.stopPropagation()}
+    <motion.div className="palette-back" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
+      <motion.div className="palette" initial={{ opacity: 0, y: -16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={SPRING} role="dialog" aria-modal="true" aria-label="Buscar" onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Escape') onClose();
           else if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, results.length - 1)); }
@@ -49,7 +51,7 @@ export function Palette({ items, search, onClose }: { items: PaletteItem[]; sear
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
