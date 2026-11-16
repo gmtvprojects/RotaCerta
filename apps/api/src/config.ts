@@ -1,10 +1,18 @@
+import { existsSync } from 'node:fs';
 import { z } from 'zod';
+
+const bool = z.enum(['true', 'false']).default('false').transform((v) => v === 'true');
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  /** Ativa o ambiente de TESTE (dados de demonstração, banco embutido se não houver DATABASE_URL). */
+  AMBIENTE_TESTE: bool,
+  /** Ativa o ambiente de PRODUÇÃO (exige banco e segredo reais, sem seed, cookie seguro). */
+  AMBIENTE_PRODUCAO: bool,
   PORT: z.coerce.number().int().default(3333),
-  DATABASE_URL: z.string().min(1),
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET precisa ter ao menos 32 caracteres'),
+  /** `pglite` (ou vazio, só no ambiente de teste) usa o Postgres embutido em `.pglite/`. */
+  DATABASE_URL: z.string().optional(),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET precisa ter ao menos 32 caracteres').optional(),
   /** Validade do token de acesso. Curto: a renovação é feita pelo cookie de sessão. */
   JWT_EXPIRES_IN: z.string().default('15m'),
   /** Dias que uma sessão sobrevive sem uso (renovada a cada acesso). */
@@ -24,13 +32,45 @@ const schema = z.object({
   SEED_PASSWORD: z.string().min(8).optional(),
 });
 
-export type Config = z.infer<typeof schema>;
+type Parsed = z.infer<typeof schema>;
+export type Config = Omit<Parsed, 'DATABASE_URL' | 'JWT_SECRET'> & {
+  /** Ambiente ativo, derivado das chaves AMBIENTE_TESTE / AMBIENTE_PRODUCAO. */
+  APP_ENV: 'test' | 'production';
+  DATABASE_URL: string;
+  JWT_SECRET: string;
+};
+
+const TEST_JWT_SECRET = 'ambiente-de-teste-rotacerta-nao-usar-em-producao';
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const parsed = schema.safeParse(env);
-  if (!parsed.success) {
-    const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n');
-    throw new Error(`Configuração inválida:\n${issues}`);
+  // Lê o .env (sem sobrescrever variáveis já definidas no processo).
+  if (env === process.env && existsSync('.env')) process.loadEnvFile('.env');
+
+  const parsed = schema.safeParse(Object.fromEntries(Object.entries(env).filter(([, v]) => v !== '')));
+  const fail = (issues: string[]): never => {
+    throw new Error(`Configuração inválida:\n${issues.join('\n')}`);
+  };
+  if (!parsed.success) return fail(parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
+
+  const c = parsed.data;
+  if (c.AMBIENTE_TESTE === c.AMBIENTE_PRODUCAO) {
+    return fail(['Ative exatamente um ambiente: AMBIENTE_TESTE=true ou AMBIENTE_PRODUCAO=true (o outro como false).']);
   }
-  return parsed.data;
+
+  if (c.AMBIENTE_PRODUCAO) {
+    const issues: string[] = [];
+    if (!c.DATABASE_URL || c.DATABASE_URL === 'pglite') issues.push('DATABASE_URL: obrigatória em produção (Postgres real).');
+    if (!c.JWT_SECRET) issues.push('JWT_SECRET: obrigatório em produção (32+ caracteres aleatórios).');
+    if (issues.length) return fail(issues);
+    return { ...c, NODE_ENV: 'production', APP_ENV: 'production', DATABASE_URL: c.DATABASE_URL!, JWT_SECRET: c.JWT_SECRET! };
+  }
+
+  return {
+    ...c,
+    NODE_ENV: 'development',
+    APP_ENV: 'test',
+    DATABASE_URL: c.DATABASE_URL || 'pglite',
+    JWT_SECRET: c.JWT_SECRET ?? TEST_JWT_SECRET,
+    SEED_PASSWORD: c.SEED_PASSWORD ?? 'rotacerta123',
+  };
 }

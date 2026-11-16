@@ -4,6 +4,7 @@ import { connect } from './pg';
 import { migrateAllTenants } from './tenants';
 
 const { DATABASE_URL } = loadConfig();
+if (DATABASE_URL === 'pglite') { console.log('Banco embutido: as migrações rodam sozinhas ao iniciar a API.'); process.exit(0); }
 const { db, close } = connect(DATABASE_URL);
 // 1) tabelas compartilhadas (schema public); 2) o schema de cada empresa
 await migrate(db, { migrationsFolder: './drizzle' });

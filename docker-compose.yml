@@ -1,14 +1,55 @@
-# Infraestrutura local de desenvolvimento (Postgres). A API roda com `pnpm --filter @rotacerta/api dev`.
+# Sobe tudo: banco + API + web.
+#   Teste (padrão):  docker compose up -d --build        -> web http://localhost:8088, API http://localhost:3333
+#   Produção:        AMBIENTE_TESTE=false AMBIENTE_PRODUCAO=true JWT_SECRET=... POSTGRES_PASSWORD=... docker compose up -d --build
+# Só o banco (API/web rodando com pnpm):  docker compose up -d postgres
+# As variáveis podem ficar num arquivo .env na raiz (não versionado).
 services:
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: rotacerta
-      POSTGRES_PASSWORD: rotacerta
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rotacerta}
       POSTGRES_DB: rotacerta
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5440}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rotacerta"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AMBIENTE_TESTE: ${AMBIENTE_TESTE:-true}
+      AMBIENTE_PRODUCAO: ${AMBIENTE_PRODUCAO:-false}
+      DATABASE_URL: postgres://rotacerta:${POSTGRES_PASSWORD:-rotacerta}@postgres:5432/rotacerta
+      JWT_SECRET: ${JWT_SECRET:-}
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${WEB_PORT:-8088}}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
+    ports:
+      - "3333:3333"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # endereço da API visto pelo NAVEGADOR (embutido no build)
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3333}
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8088}:8080"
+
 volumes:
   pgdata:

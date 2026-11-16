@@ -1,6 +1,6 @@
 import type { BoxInput, Client, Dataset, DeliveryForm, Order, PaperForm, PaperValues, Route } from './types';
 import { checkBoxesFree, checkCapacity, volumesOfOrders } from './rules';
-import { DELIVERY_WINDOWS, MAX_PAPER_BOXES, volumesOf } from './types';
+import { DELIVERY_WINDOWS, MAX_PAPER_BOXES } from './types';
 
 /** Relógio injetado: o domínio não lê a hora do sistema, quem chama decide (servidor, testes). */
 export interface Clock {

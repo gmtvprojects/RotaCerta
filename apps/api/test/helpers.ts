@@ -16,7 +16,7 @@ export const PASSWORD = 'senha-de-teste-123';
 export const COMPANY_ID = 1;
 
 export const testConfig: Config = {
-  NODE_ENV: 'test', PORT: 0, DATABASE_URL: 'pglite', JWT_SECRET: 'x'.repeat(40), JWT_EXPIRES_IN: '15m', REFRESH_DAYS: 14, COOKIE_SAMESITE: 'lax', LOGIN_RATE_MAX: 1000, LOCATION_RETENTION_DAYS: 30,
+  NODE_ENV: 'test', AMBIENTE_TESTE: true, AMBIENTE_PRODUCAO: false, APP_ENV: 'test', PORT: 0, DATABASE_URL: 'pglite', JWT_SECRET: 'x'.repeat(40), JWT_EXPIRES_IN: '15m', REFRESH_DAYS: 14, COOKIE_SAMESITE: 'lax', LOGIN_RATE_MAX: 1000, LOCATION_RETENTION_DAYS: 30,
   CORS_ORIGIN: 'http://localhost:5173', APP_TZ: 'America/Sao_Paulo',
 };
 

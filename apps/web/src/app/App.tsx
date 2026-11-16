@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ALLOWED_PAGES, ORDER_STATUS_LABELS, ROLE_HOME, ROLE_LABELS, canAccess, type Page, type Role } from '@rotacerta/domain';
 import { Icon, Logo, type IconName } from './icons';
@@ -6,45 +6,49 @@ import { Palette, type PaletteItem } from './Palette';
 import { useStore } from './store';
 import { TourBar, useTour } from './tour';
 import { Login } from '../pages/Login';
-import { Dashboard } from '../pages/Dashboard';
-import { Entregas } from '../pages/Entregas';
-import { Volumes } from '../pages/Volumes';
-import { Expedicao } from '../pages/Expedicao';
-import { Romaneios } from '../pages/Romaneios';
-import { Motorista } from '../pages/Motorista';
-import { Notificacoes } from '../pages/Notificacoes';
-import { Configuracoes } from '../pages/Configuracoes';
-import { Atendimento } from '../pages/Atendimento';
-import { Pendencias } from '../pages/Pendencias';
-import { Carregamento } from '../pages/Carregamento';
-import { Planejamento } from '../pages/Planejamento';
-import { Perfil } from '../pages/Perfil';
-import { Acompanhamento } from '../pages/Acompanhamento';
-import { Clientes } from '../pages/Clientes';
-import { ForcePassword } from '../pages/ForcePassword';
-import { PlatformApp } from '../pages/Plataforma';
-import { OrderDetail } from '../pages/OrderDetail';
+
+const Dashboard = lazy(() => import('../pages/Dashboard').then((m) => ({ default: m.Dashboard })));
+const Entregas = lazy(() => import('../pages/Entregas').then((m) => ({ default: m.Entregas })));
+const Volumes = lazy(() => import('../pages/Volumes').then((m) => ({ default: m.Volumes })));
+const Expedicao = lazy(() => import('../pages/Expedicao').then((m) => ({ default: m.Expedicao })));
+const Romaneios = lazy(() => import('../pages/Romaneios').then((m) => ({ default: m.Romaneios })));
+const Motorista = lazy(() => import('../pages/Motorista').then((m) => ({ default: m.Motorista })));
+const Notificacoes = lazy(() => import('../pages/Notificacoes').then((m) => ({ default: m.Notificacoes })));
+const Configuracoes = lazy(() => import('../pages/Configuracoes').then((m) => ({ default: m.Configuracoes })));
+const Atendimento = lazy(() => import('../pages/Atendimento').then((m) => ({ default: m.Atendimento })));
+const Pendencias = lazy(() => import('../pages/Pendencias').then((m) => ({ default: m.Pendencias })));
+const Carregamento = lazy(() => import('../pages/Carregamento').then((m) => ({ default: m.Carregamento })));
+const Planejamento = lazy(() => import('../pages/Planejamento').then((m) => ({ default: m.Planejamento })));
+const Perfil = lazy(() => import('../pages/Perfil').then((m) => ({ default: m.Perfil })));
+const Acompanhamento = lazy(() => import('../pages/Acompanhamento').then((m) => ({ default: m.Acompanhamento })));
+const Clientes = lazy(() => import('../pages/Clientes').then((m) => ({ default: m.Clientes })));
+const ForcePassword = lazy(() => import('../pages/ForcePassword').then((m) => ({ default: m.ForcePassword })));
+const PlatformApp = lazy(() => import('../pages/Plataforma').then((m) => ({ default: m.PlatformApp })));
+const OrderDetail = lazy(() => import('../pages/OrderDetail').then((m) => ({ default: m.OrderDetail })));
+
+const loading = <div className="login"><section className="login-card"><Logo sub="Gestão de entregas" /><p className="muted">Carregando…</p></section></div>;
+const deferred = (content: ReactNode) => <Suspense fallback={loading}>{content}</Suspense>;
 
 const AmbientRoutes = lazy(() => import('./AmbientRoutes').then(m => ({ default: m.AmbientRoutes })));
 
 interface PageDef { page: Page; path: string; label: string; element: JSX.Element; hidden?: boolean }
 
 const PAGES: PageDef[] = [
-  { page: 'dashboard', path: '/gestao', label: 'Painel de gestão', element: <Dashboard /> },
-  { page: 'atendimento', path: '/atendimento', label: 'Atendimento', element: <Atendimento /> },
-  { page: 'pendencias', path: '/pendencias', label: 'Continuar atendimento', element: <Pendencias /> },
-  { page: 'entregas', path: '/entregas', label: 'Entregas', element: <Entregas /> },
-  { page: 'clientes', path: '/clientes', label: 'Clientes', element: <Clientes /> },
-  { page: 'volumes', path: '/volumes', label: 'Volumes e caixas', element: <Volumes /> },
-  { page: 'expedicao', path: '/expedicao', label: 'Montar carga', element: <Expedicao /> },
-  { page: 'planejamento', path: '/planejamento', label: 'Planejamento', element: <Planejamento />, hidden: true },
-  { page: 'carregamento', path: '/carregamento', label: 'Carregamento', element: <Carregamento /> },
-  { page: 'romaneio', path: '/romaneios', label: 'Romaneios', element: <Romaneios /> },
-  { page: 'motorista', path: '/motorista', label: 'Motorista', element: <Motorista /> },
-  { page: 'acompanhamento', path: '/acompanhamento', label: 'Acompanhar viagens', element: <Acompanhamento /> },
-  { page: 'notificacoes', path: '/notificacoes', label: 'Notificações', element: <Notificacoes /> },
-  { page: 'configuracoes', path: '/configuracoes', label: 'Configurações', element: <Configuracoes /> },
-  { page: 'perfis', path: '/perfil', label: 'Perfil', element: <Perfil /> },
+  { page: 'dashboard', path: '/gestao', label: 'Painel de gestão', element: deferred(<Dashboard />) },
+  { page: 'atendimento', path: '/atendimento', label: 'Atendimento', element: deferred(<Atendimento />) },
+  { page: 'pendencias', path: '/pendencias', label: 'Continuar atendimento', element: deferred(<Pendencias />) },
+  { page: 'entregas', path: '/entregas', label: 'Entregas', element: deferred(<Entregas />) },
+  { page: 'clientes', path: '/clientes', label: 'Clientes', element: deferred(<Clientes />) },
+  { page: 'volumes', path: '/volumes', label: 'Volumes e caixas', element: deferred(<Volumes />) },
+  { page: 'expedicao', path: '/expedicao', label: 'Montar carga', element: deferred(<Expedicao />) },
+  { page: 'planejamento', path: '/planejamento', label: 'Planejamento', element: deferred(<Planejamento />), hidden: true },
+  { page: 'carregamento', path: '/carregamento', label: 'Carregamento', element: deferred(<Carregamento />) },
+  { page: 'romaneio', path: '/romaneios', label: 'Romaneios', element: deferred(<Romaneios />) },
+  { page: 'motorista', path: '/motorista', label: 'Motorista', element: deferred(<Motorista />) },
+  { page: 'acompanhamento', path: '/acompanhamento', label: 'Acompanhar viagens', element: deferred(<Acompanhamento />) },
+  { page: 'notificacoes', path: '/notificacoes', label: 'Notificações', element: deferred(<Notificacoes />) },
+  { page: 'configuracoes', path: '/configuracoes', label: 'Configurações', element: deferred(<Configuracoes />) },
+  { page: 'perfis', path: '/perfil', label: 'Perfil', element: deferred(<Perfil />) },
 ];
 
 interface DockLink { to: string; label: string; icon: IconName }
@@ -122,9 +126,9 @@ export function App() {
   // sem sessão o endereço volta à raiz: depois do logout (ou de um link antigo) a barra não fica em /gestao
   if (!user) return pathname === '/' ? <Login /> : <Navigate to="/" replace />;
   // senha definida por outra pessoa (cadastro da empresa ou redefinição): troca antes de qualquer outra tela
-  if (mustChangePassword) return <ForcePassword />;
+  if (mustChangePassword) return deferred(<ForcePassword />);
   // quem opera o serviço usa o painel de empresas, sem as telas da operação
-  if (isPlatform) return <PlatformApp />;
+  if (isPlatform) return deferred(<PlatformApp />);
   if (!role) return <Login />;
   if (connection !== 'ready') {
     return (
@@ -177,7 +181,7 @@ export function App() {
         <button type="button" onClick={() => setSearching(true)} aria-haspopup="dialog"><Icon name="search" /><span>Buscar</span><kbd>Ctrl K</kbd></button>
       </nav>
       {searching && <Palette items={paletteItems} search={searchOrders} onClose={() => setSearching(false)} />}
-      {orderId != null && <OrderDetail orderId={orderId} onClose={() => setOrderId(null)} />}
+      {orderId != null && deferred(<OrderDetail orderId={orderId} onClose={() => setOrderId(null)} />)}
     </div>
   );
 }

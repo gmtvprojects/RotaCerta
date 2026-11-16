@@ -43,8 +43,6 @@ describe('fluxo completo: do cadastro à entrega', () => {
   it('atendente cadastra, expedição monta e libera, motorista entrega', async () => {
     const atendente = await loginAs(app, 'atendente');
     const expedicao = await loginAs(app, 'expedicao');
-    const motorista = await loginAs(app, 'motorista');
-
     // 1. cadastro
     const created = await call('POST', '/api/orders', atendente, delivery);
     expect(created.statusCode).toBe(200);

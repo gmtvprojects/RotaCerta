@@ -6,9 +6,6 @@ import { SlideUpText } from '../app/SlideUpText';
 import { useStore } from '../app/store';
 import { InstallCard } from './InstallCard';
 
-/** Atalhos de preenchimento só no ambiente de desenvolvimento (usuários criados pelo seed da API). */
-const DEMO = ['atendente', 'expedicao', 'motorista', 'gestao'] as const;
-
 export function Login() {
   const { login, problem, clearProblem } = useStore();
   const [email, setEmail] = useState('');
@@ -69,11 +66,6 @@ export function Login() {
             </button>
           </form>
           <p className="muted small">Esqueceu a senha? Peça uma nova para a gestão da loja.</p>
-          {import.meta.env.DEV && (
-            <div className="chips">
-              {DEMO.map((r) => <button key={r} type="button" className="chip" onClick={() => setEmail(`${r}@rotacerta.local`)}>{r}</button>)}
-            </div>
-          )}
           <InstallCard compact />
         </GlowCard>
       </main>

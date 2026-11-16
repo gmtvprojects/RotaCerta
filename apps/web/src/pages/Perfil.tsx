@@ -1,6 +1,5 @@
 import { ALLOWED_PAGES, ROLE_DESCRIPTIONS, ROLE_LABELS, type Page, type Role } from '@rotacerta/domain';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useStore } from '../app/store';
 import { TOURS, useTour } from '../app/tour';
 import { InstallCard } from './InstallCard';
@@ -23,7 +22,6 @@ export function Perfil() {
   const [next, setNext] = useState('');
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const tour = useTour();
-  const navigate = useNavigate();
   if (!role) return null;
   const person = user?.name ?? (role === 'motorista' ? data.drivers.find((d) => d.id === driverId)?.name ?? PEOPLE[role] : PEOPLE[role]);
   const areas = [...new Set(ALLOWED_PAGES[role].map((p) => AREA[p]).filter(Boolean))];

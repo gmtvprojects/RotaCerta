@@ -10,6 +10,7 @@ apps/web         App web (gestão, atendimento, expedição)        React + Vite
 apps/api         API e tempo real                                 Fastify + PostgreSQL
 apps/mobile      App do motorista (GPS em segundo plano)          Expo / React Native   [planejado]
 packages/domain  Regras de negócio, tipos e permissões            TypeScript puro
+packages/contracts Contratos HTTP e validação das fronteiras       Zod
 ```
 
 Tudo em um monorepo (pnpm workspaces + Turborepo). Um repositório só, porque as regras vivem em
@@ -27,6 +28,7 @@ Tudo em um monorepo (pnpm workspaces + Turborepo). Um repositório só, porque a
 | Banco | **PostgreSQL 16** | Sem extensões proprietárias, para migrar para RDS sem retrabalho |
 | ORM / migrações | **Drizzle ORM** + drizzle-kit | SQL versionado em `apps/api/drizzle` |
 | Validação | **Zod 4** | Corpo das requisições e variáveis de ambiente |
+| Qualidade | **Biome** | Lint rápido e uniforme no monorepo |
 | Testes | **Vitest** + PGlite (Postgres em memória) | Testa o schema e as migrações de verdade, sem Docker |
 | Build da API | tsup (esbuild) | Embute `@rotacerta/domain` no bundle |
 | Container | Docker (`apps/api/Dockerfile`) | Mesmo container no Railway e na AWS |
@@ -74,6 +76,11 @@ app.ts             composição (plugins, auth, dataset, WebSocket)
 db/                schema, migrações, repositório, unidade de trabalho, seed
 ```
 Rotas finas: nenhuma regra de negócio dentro de rota.
+
+### 3.5.1 Contratos HTTP compartilhados
+`packages/contracts` é a fonte única dos schemas Zod usados nas entradas da API. As respostas críticas de sessão e do
+dataset também são validadas no navegador; uma resposta incompatível falha na fronteira HTTP em vez de contaminar o estado
+da aplicação por meio de um cast TypeScript. O pacote depende somente do domínio e do Zod, sem importar API ou React.
 
 ### 3.6 Autorização por perfil
 Perfis: `gestao`, `atendente`, `expedicao`, `motorista`. Cada rota declara quem pode chamá-la (`guard([...])`);
@@ -175,6 +182,14 @@ Autenticação por e-mail e senha (hash `scrypt`, mínimo de 10 caracteres). Log
 | `POST/PUT/DELETE /api/config/*` | gestão | Regiões, bairros, veículos, motoristas, horários |
 
 ## 6. Rodando localmente
+
+### 6.00 Docker (tudo junto)
+`docker compose up -d --build` sobe Postgres (porta 5440 no host), API (3333) e web (http://localhost:8088). O ambiente vem de `AMBIENTE_TESTE` / `AMBIENTE_PRODUCAO` (padrão: teste, com dados de demonstração). Para produção: `AMBIENTE_TESTE=false AMBIENTE_PRODUCAO=true JWT_SECRET=... POSTGRES_PASSWORD=... docker compose up -d --build`. Portas configuráveis por `POSTGRES_PORT` e `WEB_PORT`. Só o banco: `docker compose up -d postgres`.
+
+### 6.0 Ambientes (teste e produção)
+Em `apps/api/.env` ative **exatamente um**: `AMBIENTE_TESTE=true` ou `AMBIENTE_PRODUCAO=true` (o outro `false`).
+- **Teste:** `DATABASE_URL` e `JWT_SECRET` opcionais. Sem `DATABASE_URL`, usa banco embutido (PGlite) com migração e dados de demonstração automáticos (senha `rotacerta123`, ou `SEED_PASSWORD`). Basta `pnpm dev`.
+- **Produção:** exige `DATABASE_URL` (Postgres real) e `JWT_SECRET` (32+); seed bloqueado; cookie seguro por padrão. Rode `db:migrate` antes de subir.
 
 ```bash
 docker compose up -d                 # Postgres
