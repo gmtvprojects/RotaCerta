@@ -6,7 +6,7 @@ export const EASE = [0.16, 1, 0.3, 1] as const;
 /** Mola padrão dos elementos que "encaixam" (doca, janelas). */
 export const SPRING = { type: 'spring', stiffness: 380, damping: 32 } as const;
 
-const REVEAL = '.page-head, .card, .kpi, .tile, .banner, .stops > li';
+const REVEAL = '.page-head, .card, .kpi, .tile, .banner, .stops > li, [data-card]';
 
 /**
  * Envolve cada tela: ao abrir, o cabeçalho, os quadros e as listas entram em cascata (sobem e aparecem).

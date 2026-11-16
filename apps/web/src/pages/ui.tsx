@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { ORDER_STATUS_LABELS, ROUTE_STATUS_LABELS, type Order, type Route } from '@rotacerta/domain';
 import { motion } from 'motion/react';
+import { Badge } from 'astrixui/components/ui/badge.js';
 import { Icon } from '../app/icons';
 import { SPRING } from '../app/motion';
 import { SlideUpText } from '../app/SlideUpText';
@@ -19,14 +20,22 @@ const ORDER_TONE: Record<Order['status'], string> = {
   released: 'blue', onroute: 'violet', delivered: 'green', failed: 'red', cancelled: 'gray',
 };
 
-export const OrderPill = ({ status }: { status: Order['status'] }) => (
-  <span className={`pill ${ORDER_TONE[status]}`}>{ORDER_STATUS_LABELS[status]}</span>
+const TONES: Record<string, string> = {
+  gray: 'bg-secondary text-muted-foreground',
+  green: 'bg-[color-mix(in_srgb,var(--green)_15%,var(--card))] text-[var(--green)]',
+  red: 'bg-[color-mix(in_srgb,var(--red)_14%,var(--card))] text-[var(--red)]',
+  amber: 'bg-[color-mix(in_srgb,var(--amber)_15%,var(--card))] text-[var(--amber)]',
+  blue: 'bg-accent text-primary',
+  violet: 'bg-[color-mix(in_srgb,var(--violet)_15%,var(--card))] text-[var(--violet)]',
+};
+const Pill = ({ tone, children }: { tone: string; children: ReactNode }) => (
+  <Badge className={`badge-dot whitespace-nowrap border-transparent py-[3px] hover:opacity-100 ${TONES[tone]}`}>{children}</Badge>
 );
 
+export const OrderPill = ({ status }: { status: Order['status'] }) => <Pill tone={ORDER_TONE[status]}>{ORDER_STATUS_LABELS[status]}</Pill>;
+
 const ROUTE_TONE: Record<Route['status'], string> = { loading: 'amber', released: 'blue', active: 'violet', finished: 'green' };
-export const RoutePill = ({ status }: { status: Route['status'] }) => (
-  <span className={`pill ${ROUTE_TONE[status]}`}>{ROUTE_STATUS_LABELS[status]}</span>
-);
+export const RoutePill = ({ status }: { status: Route['status'] }) => <Pill tone={ROUTE_TONE[status]}>{ROUTE_STATUS_LABELS[status]}</Pill>;
 
 export const Empty = ({ children }: { children: ReactNode }) => <div className="empty">{children}</div>;
 

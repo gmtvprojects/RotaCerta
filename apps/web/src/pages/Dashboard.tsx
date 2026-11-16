@@ -1,13 +1,17 @@
-import { motion } from 'motion/react';
-import { useState } from 'react';
+import { Card } from 'astrixui/components/ui/card.js';
+import { Progress } from 'astrixui/components/ui/progress.js';
+import { useEffect, useState } from 'react';
 import { useStore } from '../app/store';
-import { CountUp, EASE } from '../app/motion';
+import { CountUp } from '../app/motion';
 import { OrderDetail } from './OrderDetail';
 import { Header, OrderPill } from './ui';
 
 export function Dashboard() {
   const { data } = useStore();
   const [openId, setOpenId] = useState<number | null>(null);
+  // as barras partem de zero e crescem ao abrir a tela
+  const [grown, setGrown] = useState(false);
+  useEffect(() => { const t = window.setTimeout(() => setGrown(true), 120); return () => window.clearTimeout(t); }, []);
   const count = (s: string) => data.orders.filter((o) => o.status === s).length;
   const total = data.orders.length || 1;
   // As etapas na ordem em que a entrega anda: do atendimento à porta do cliente.
@@ -23,14 +27,14 @@ export function Dashboard() {
   return (
     <>
       <Header title="A operação, em movimento." subtitle="Do caixa à porta do cliente. Tudo no mesmo lugar." />
-      <section className="card flow" aria-label="Fluxo das entregas de hoje">
+      <Card data-card className="card flow rounded-[18px] shadow-none" aria-label="Fluxo das entregas de hoje">
         {flow.map(([label, value], i) => (
           <div key={label} className={`flow-step ${i === flow.length - 1 ? 'end' : ''}`}>
             <strong><CountUp value={value} /></strong><span>{label}</span>
-            <i><motion.b initial={{ width: 0 }} animate={{ width: `${(value / total) * 100}%` }} transition={{ duration: 0.9, ease: EASE, delay: 0.2 + i * 0.08 }} /></i>
+            <Progress value={grown ? (value / total) * 100 : 0} className="h-[5px] bg-[var(--sunk)] [&>div]:duration-1000 [&>div]:ease-out" aria-label={label} />
           </div>
         ))}
-      </section>
+      </Card>
       <p className="muted small">{data.orders.length} entregas no total{failed > 0 ? ` · ${failed} não entregue(s), aguardando nova tentativa` : ''}.</p>
       <section className="card">
         <h2>Entregas</h2>

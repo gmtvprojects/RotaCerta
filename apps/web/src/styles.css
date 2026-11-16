@@ -1,3 +1,6 @@
+@tailwind base;
+@tailwind utilities;
+
 /* Identidade: azuis do mais escuro (tinta, doca) ao mais claro (fundos), com verde só para a ação de agora e para o que foi concluído. */
 :root {
   --bg: #edf2fb; --card: #fff; --sunk: #e1e9f7; --ink: #0a1a3c; --muted: #56658b; --line: #d0dbef;
@@ -395,7 +398,7 @@ textarea { font: inherit; padding: 9px 11px; border: 1px solid var(--line); bord
 .shell .stops li:hover { background: color-mix(in srgb, var(--brand-soft) 45%, transparent); padding-inline: 8px; }
 
 /* etiquetas de status com ponto */
-.shell .pill::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; vertical-align: 1px; opacity: .85; }
+.shell .pill::before, .shell .badge-dot::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; vertical-align: 1px; opacity: .85; }
 
 /* botões */
 .shell button.primary, .shell .btn.primary { box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--grad-a) 80%, transparent); transition: transform .15s, box-shadow .2s, filter .2s; }
@@ -430,3 +433,8 @@ textarea { font: inherit; padding: 9px 11px; border: 1px solid var(--line); bord
   .shell .card, .shell .stops li, .dock .icon { transition: none; transform: none !important; }
 }
 .shell strong > .count { font: inherit; color: inherit; font-size: inherit; }
+
+/* astrixui: etiquetas, quadros, progresso e dicas */
+.stops li .badge-dot { flex: none; align-self: center; height: fit-content; text-align: center; }
+.flow-step.end [role="progressbar"] > div { background: var(--accent); }
+.flow-step [role="progressbar"] > div { background: linear-gradient(90deg, var(--grad-a), var(--grad-b)); }

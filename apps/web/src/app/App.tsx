@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ALLOWED_PAGES, ORDER_STATUS_LABELS, ROLE_HOME, ROLE_LABELS, canAccess, type Page, type Role } from '@rotacerta/domain';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from 'astrixui/components/ui/tooltip.js';
 import { motion } from 'motion/react';
 import { Icon, Logo, type IconName } from './icons';
 import { SPRING, Stage } from './motion';
@@ -161,6 +162,7 @@ export function App() {
   );
 
   return (
+    <TooltipProvider delayDuration={250}>
     <div className={`shell ${tour.active ? 'with-tour' : ''}`}>
       <motion.header className="topbar" initial={{ y: -24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={SPRING}>
         <Link to={homePath(role)} className="logo-link" aria-label="RotaCerta, início"><Logo /></Link>
@@ -169,7 +171,12 @@ export function App() {
         {canAccess(role, 'notificacoes') && (
           <NavLink to="/notificacoes" className={({ isActive }) => `iconbtn ${isActive ? 'active' : ''}`} aria-label="Notificações"><Icon name="bell" /></NavLink>
         )}
-        <MotionLink to="/perfil" className="avatar" aria-label={`Perfil de ${user.name}`} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}>{initials(user.name)}</MotionLink>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <MotionLink to="/perfil" className="avatar" aria-label={`Perfil de ${user.name}`} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.94 }}>{initials(user.name)}</MotionLink>
+          </TooltipTrigger>
+          <TooltipContent>{user.name}</TooltipContent>
+        </Tooltip>
       </motion.header>
       <main className="main">
         {problem && <div className="banner error" role="alert">{problem} <button type="button" onClick={clearProblem}>Fechar</button></div>}
@@ -188,5 +195,6 @@ export function App() {
       {searching && <Palette items={paletteItems} search={searchOrders} onClose={() => setSearching(false)} />}
       {orderId != null && deferred(<OrderDetail orderId={orderId} onClose={() => setOrderId(null)} />)}
     </div>
+    </TooltipProvider>
   );
 }
