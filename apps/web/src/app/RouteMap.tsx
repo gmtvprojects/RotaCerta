@@ -2,7 +2,8 @@ import { useEffect, useRef, type RefObject } from 'react';
 
 /**
  * Mapa decorativo da tela de entrar: as quadras de um bairro em pontos e duas rotas que saem da loja.
- * Cada rota sorteia 3 ou 4 destinos dentro da área reservada e revela a próxima parada
+ * Cada rota sorteia 3 ou 4 destinos dentro da área reservada, sem repetir ruas já usadas pela outra
+ * rota nem passar por cima de paradas, e revela a próxima parada
  * depois de concluir a anterior. É só ilustração: não usa dados da operação.
  * Fim do ciclo: o traço é recolhido e uma nova rota parte da mesma loja.
  * Com mouse, as quadras perto do cursor se afastam um pouco e deixam um rastro que assenta sozinho (as rotas ficam paradas).
@@ -56,25 +57,47 @@ function build(area: Area): Built[] {
   const store = { x: nearest(xs, left + (right - left) * 0.12), y: nearest(ys, top + (bottom - top) * 0.58) };
   const candidates = xs.flatMap((x) => ys.map((y) => ({ x, y }))).filter((p) => dist(store, p) > 28);
   const occupied: Pt[] = [store];
-  const pick = (points: Pt[]) => points[Math.floor(Math.random() * points.length)]!;
+  const pick = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)]!;
+  // Trechos já desenhados pelas duas rotas: um trecho novo não pode correr por cima deles.
+  const drawn: [Pt, Pt][] = [];
+  const same = (a: Pt, b: Pt) => Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
+  const shared = (a: Pt, b: Pt, c: Pt, d: Pt) => {
+    const run = (p: number, q: number, r: number, s: number) => Math.max(0, Math.min(Math.max(p, q), Math.max(r, s)) - Math.max(Math.min(p, q), Math.min(r, s)));
+    if (a.y === b.y && c.y === d.y && Math.abs(a.y - c.y) < 0.5) return run(a.x, b.x, c.x, d.x);
+    if (a.x === b.x && c.x === d.x && Math.abs(a.x - c.x) < 0.5) return run(a.y, b.y, c.y, d.y);
+    return 0;
+  };
+  const crosses = (q: Pt, a: Pt, b: Pt) => q.x >= Math.min(a.x, b.x) - 0.5 && q.x <= Math.max(a.x, b.x) + 0.5 && q.y >= Math.min(a.y, b.y) - 0.5 && q.y <= Math.max(a.y, b.y) + 0.5;
+  /** Quanto o trecho repete de ruas já usadas, e quantas paradas ele atravessaria no caminho. */
+  const overlap = (pts: Pt[]) => {
+    let n = 0;
+    const ends = [pts[0]!, pts[pts.length - 1]!];
+    for (let k = 1; k < pts.length; k++) {
+      const a = pts[k - 1]!, b = pts[k]!;
+      for (const [c, d] of drawn) if (shared(a, b, c, d) > 1) n += shared(a, b, c, d);
+      for (const q of occupied) if (!ends.some((e) => same(e, q)) && crosses(q, a, b)) n += 100;
+    }
+    return n;
+  };
+  /** As duas dobras possíveis de um trecho em "L" (ou a reta, quando já estão alinhados). */
+  const shapes = (a: Pt, b: Pt): Pt[][] => a.x === b.x || a.y === b.y ? [[a, b]] : [[a, { x: b.x, y: a.y }, b], [a, { x: a.x, y: b.y }, b]];
   return DELAYS.map((delay, ri) => {
     const count = 3 + Math.floor(Math.random() * 2);
     const stops = [store];
+    const legs: Leg[] = [];
     for (let i = 0; i < count; i++) {
       const last = stops[stops.length - 1]!;
       const free = candidates.filter((p) => !occupied.some((q) => p.x === q.x && p.y === q.y));
       const spaced = free.filter((p) => occupied.every((q) => Math.hypot(p.x - q.x, p.y - q.y) >= 26) && dist(last, p) >= 45);
       const choices = spaced.length ? spaced : free;
-      const preferred = choices.filter((p) => p.x > store.x && (ri ? p.y >= top + (bottom - top) * 0.3 : p.y <= top + (bottom - top) * 0.7));
-      const next = pick(preferred.length ? preferred : choices);
-      stops.push(next); occupied.push(next);
-    }
-    const legs: Leg[] = [];
-    for (let i = 0; i < stops.length - 1; i++) {
-      const a = stops[i]!, b = stops[i + 1]!;
-      const corner = i % 2 ? { x: a.x, y: b.y } : { x: b.x, y: a.y };
-      const pts = a.x !== b.x && a.y !== b.y ? [a, corner, b] : [a, b];
-      legs.push({ pts, len: pts.slice(1).reduce((n, p, k) => n + dist(pts[k]!, p), 0) });
+      const options = choices.flatMap((p) => shapes(last, p).map((pts) => ({ p, pts, cost: overlap(pts) })));
+      const least = Math.min(...options.map((o) => o.cost));
+      const clean = options.filter((o) => o.cost <= least + 0.5);
+      const preferred = clean.filter(({ p }) => p.x > store.x && (ri ? p.y >= top + (bottom - top) * 0.3 : p.y <= top + (bottom - top) * 0.7));
+      const next = pick(preferred.length ? preferred : clean);
+      stops.push(next.p); occupied.push(next.p);
+      for (let k = 1; k < next.pts.length; k++) drawn.push([next.pts[k - 1]!, next.pts[k]!]);
+      legs.push({ pts: next.pts, len: next.pts.slice(1).reduce((n, p, k) => n + dist(next.pts[k]!, p), 0) });
     }
     let acc = 0;
     return {

@@ -52,21 +52,35 @@ export function Entregas() {
         </div>
         <p className="muted small">{rows.length} entrega(s)</p>
         {rows.length === 0 ? <Empty>Nenhuma entrega encontrada. Tente outro nome ou remova os filtros.</Empty> : (
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Código</th><th>Cliente</th><th>Endereço</th><th>Janela</th><th>Caixas</th><th>Status</th><th /></tr></thead>
-              <tbody>
-                {rows.map((o) => (
-                  <tr key={o.id}>
-                    <td>#{o.id}</td><td>{o.name}<div className="muted small">{o.phone}</div></td>
-                    <td>{o.street}, {o.number} · {o.neighborhood}</td><td>{o.window}</td>
-                    <td>{o.boxes.length || '—'}</td><td><OrderPill status={o.status} /></td>
-                    <td><button type="button" onClick={() => setOpenId(o.id)}>Detalhes</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="table-wrap has-cards">
+              <table>
+                <thead><tr><th>Código</th><th>Cliente</th><th>Endereço</th><th>Janela</th><th>Caixas</th><th>Status</th><th /></tr></thead>
+                <tbody>
+                  {rows.map((o) => (
+                    <tr key={o.id}>
+                      <td>#{o.id}</td><td>{o.name}<div className="muted small">{o.phone}</div></td>
+                      <td>{o.street}, {o.number} · {o.neighborhood}</td><td className="nowrap">{o.window}</td>
+                      <td>{o.boxes.length || '—'}</td><td><OrderPill status={o.status} /></td>
+                      <td><button type="button" onClick={() => setOpenId(o.id)}>Detalhes</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className="m-list">
+              {rows.map((o) => (
+                <li key={o.id}>
+                  <button type="button" className="m-row" onClick={() => setOpenId(o.id)} aria-label={`Detalhes da entrega #${o.id}, ${o.name}`}>
+                    <span className="m-title"><span className="m-code">#{o.id}</span>{o.name}</span>
+                    <span className="m-end"><OrderPill status={o.status} /></span>
+                    <span className="m-sub">{o.street}, {o.number} · {o.neighborhood}</span>
+                    <span className="m-sub"><span className="nowrap">{o.window}</span> · {o.boxes.length ? `${o.boxes.length} caixa(s)` : 'sem caixas'}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
       {openId != null && <OrderDetail orderId={openId} onClose={() => setOpenId(null)} />}

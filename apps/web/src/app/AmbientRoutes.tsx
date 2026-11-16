@@ -1,7 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { AmbientRoute, CONFIRM_SECONDS, TRAIL_SECONDS, buildRoads, clamp, type Rect } from './ambientRouteModel';
+import { AmbientRoute, CONFIRM_SECONDS, TRAIL_SECONDS, buildRoads, clamp, splitZones, type Rect, type View } from './ambientRouteModel';
 
-/** Fundo transparente da operação. Os blocos e controles nunca recebem eventos da animação. */
+/**
+ * Fundo transparente da operação. Duas rotas em telas largas, cada uma na sua metade; uma só no celular (ver `splitZones`).
+ * Elas vivem em coordenadas da página: ao rolar, rolam junto com o conteúdo (sem apagar nem recomeçar).
+ * Os blocos e controles nunca recebem eventos da animação.
+ */
 export function AmbientRoutes({ pageKey }: { pageKey: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -12,9 +16,9 @@ export function AmbientRoutes({ pageKey }: { pageKey: string }) {
     const ctx = context;
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
     const theme = matchMedia('(prefers-color-scheme: dark)');
-    let route: AmbientRoute | null = null, blocks: Rect[] = [], key = '';
-    let width = 0, height = 0, frame = 0, measureFrame = 0, last = 0, scrollTimer = 0;
-    let scrolling = false, obscured = false, disposed = false;
+    let routes: AmbientRoute[] = [], blocks: Rect[] = [], key = '', size = '';
+    let width = 0, height = 0, headerBottom = 0, dockTop = 0, frame = 0, measureFrame = 0, last = 0;
+    let obscured = false, disposed = false;
     let colors = { route: '', green: '', background: '', check: '' };
     const observed = new Set<Element>();
     const rect = (element: Element): Rect => {
@@ -25,24 +29,39 @@ export function AmbientRoutes({ pageKey }: { pageKey: string }) {
       const r = element.getBoundingClientRect();
       return r.width > 0 && r.height > 0 && getComputedStyle(element).visibility !== 'hidden';
     };
+    const view = (): View => ({ top: scrollY + headerBottom + 16, bottom: scrollY + dockTop - 20, outerTop: scrollY + headerBottom, outerBottom: scrollY + height });
     const clear = () => ctx.clearRect(0, 0, width, height);
     const stop = () => { cancelAnimationFrame(frame); frame = 0; last = 0; };
-    const canRun = () => !!route && !motion.matches && !document.hidden && !scrolling && !obscured && !disposed;
+    const canRun = () => routes.length > 0 && !motion.matches && !document.hidden && !obscured && !disposed;
     const palette = () => {
       const style = getComputedStyle(document.documentElement);
       colors = { route: style.getPropertyValue('--brand').trim(), green: style.getPropertyValue('--green').trim(), background: style.getPropertyValue('--bg').trim(), check: style.getPropertyValue('--accent-ink').trim() };
     };
 
     function draw() {
-      clear(); if (!route || !canRun()) return;
-      const m = route, compact = width < 500, radius = compact ? 80 : 110;
+      clear(); if (!canRun()) return;
+      const sx = scrollX, sy = scrollY;
+      ctx.save(); ctx.translate(-sx, -sy);
+      for (const m of routes) drawRoute(m, sy);
+      // Apaga a união dos blocos, sem alterar o fundo sólido nem criar recortes em sobreposições.
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'destination-out';
+      for (const r of blocks) if (r.bottom > sy && r.y < sy + height) ctx.fillRect(r.x - 3, r.y - 3, r.right - r.x + 6, r.bottom - r.y + 6);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
+    }
+
+    function drawRoute(m: AmbientRoute, sy: number) {
+      const compact = width < 500, radius = compact ? 80 : 110;
+      const firstRow = Math.max(1, Math.floor(sy / 15)), lastRow = Math.ceil((sy + height) / 15);
+      // Brilho da grade: só as quadras perto do rastro, só na parte visível.
       const samples = m.trail.filter((_, i) => i % 3 === 0).map(p => ({ ...p, weight: (1 - clamp((m.clock - p.time) / TRAIL_SECONDS)) ** 2 }));
       samples.push({ ...m.position, time: m.clock, separate: false, weight: 1 });
       const cells = new Set<number>();
       const columns = Math.ceil(width / 15) + 1;
       for (const p of samples) {
+        if (p.y + radius < sy || p.y - radius > sy + height) continue;
         for (let x = Math.max(1, Math.floor((p.x - radius) / 15)); x <= Math.min(columns - 1, Math.ceil((p.x + radius) / 15)); x++) {
-          for (let y = Math.max(1, Math.floor((p.y - radius) / 15)); y <= Math.min(Math.floor(height / 15), Math.ceil((p.y + radius) / 15)); y++) cells.add(y * columns + x);
+          for (let y = Math.max(firstRow, Math.floor((p.y - radius) / 15)); y <= Math.min(lastRow, Math.ceil((p.y + radius) / 15)); y++) cells.add(y * columns + x);
         }
       }
       ctx.fillStyle = colors.route;
@@ -55,10 +74,10 @@ export function AmbientRoutes({ pageKey }: { pageKey: string }) {
         if (ctx.globalAlpha < .006) continue;
         ctx.beginPath(); ctx.arc(x, y, street ? 1.25 : .9, 0, Math.PI * 2); ctx.fill();
       }
+      // Caminho que falta: tracejado do ponto atual até a parada.
       ctx.globalAlpha = .23; ctx.strokeStyle = colors.route; ctx.lineWidth = 1.3; ctx.setLineDash([3, 6]);
       for (let i = m.edge; i < m.edges.length; i++) {
-        const edge = m.edges[i]!; if (edge.portal) continue;
-        const a = i === m.edge ? m.position : edge.a;
+        const edge = m.edges[i]!, a = i === m.edge ? m.position : edge.a;
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(edge.b.x, edge.b.y); ctx.stroke();
       }
       ctx.setLineDash([]); ctx.lineWidth = 2.1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -69,9 +88,11 @@ export function AmbientRoutes({ pageKey }: { pageKey: string }) {
         ctx.globalAlpha = (1 - clamp((m.clock - a.time) / TRAIL_SECONDS)) * .8;
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
-      const p = m.destination;
-      ctx.globalAlpha = clamp((m.clock - m.born + .05) / .35);
-      ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fillStyle = colors.background; ctx.fill(); ctx.strokeStyle = colors.route; ctx.lineWidth = 1.5; ctx.stroke();
+      if (m.target >= 0) {
+        const p = m.destination;
+        ctx.globalAlpha = clamp((m.clock - m.born + .05) / .35);
+        ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fillStyle = colors.background; ctx.fill(); ctx.strokeStyle = colors.route; ctx.lineWidth = 1.5; ctx.stroke();
+      }
       for (const p of m.arrivals) {
         const age = m.clock - p.time;
         ctx.globalAlpha = 1 - clamp(age / CONFIRM_SECONDS); ctx.fillStyle = colors.green;
@@ -86,16 +107,13 @@ export function AmbientRoutes({ pageKey }: { pageKey: string }) {
         ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = .92;
         ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-5.5, -5.7); ctx.lineTo(-2, 0); ctx.lineTo(-5.5, 5.7); ctx.closePath(); ctx.fill(); ctx.restore();
       }
-      // Apaga a união dos blocos, sem alterar o fundo sólido nem criar recortes em sobreposições.
-      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'destination-out';
-      for (const r of blocks) ctx.fillRect(r.x - 3, r.y - 3, r.right - r.x + 6, r.bottom - r.y + 6);
-      ctx.globalCompositeOperation = 'source-over';
     }
 
     function tick(time: number) {
       frame = 0; if (!canRun()) { last = 0; return; }
       const dt = last ? Math.min((time - last) / 1000, .06) : 0; last = time;
-      route!.advance(dt); draw(); frame = requestAnimationFrame(tick);
+      for (const m of routes) m.advance(dt);
+      draw(); frame = requestAnimationFrame(tick);
     }
     function start() { if (!frame && canRun()) frame = requestAnimationFrame(tick); }
     const resize = new ResizeObserver(() => queueMeasure());
@@ -107,28 +125,42 @@ export function AmbientRoutes({ pageKey }: { pageKey: string }) {
       const elements = [main!, ...Array.from(main!.children), ...Array.from(shell!.querySelectorAll('.topbar, .dock, .tour-bar'))];
       for (const element of observed) if (!elements.includes(element as HTMLElement)) { resize.unobserve(element); observed.delete(element); }
       for (const element of elements) if (!observed.has(element)) { observed.add(element); resize.observe(element); }
-      blocks = Array.from(main!.children).filter(el => !el.matches('.backdrop, [role="dialog"]') && visible(el)).map(rect).filter(r => r.bottom > 0 && r.y < height);
+      // Blocos em coordenadas da página: rolar não muda a malha.
+      const sx = scrollX, sy = scrollY;
+      blocks = Array.from(main!.children).filter(el => !el.matches('.backdrop, [role="dialog"]') && visible(el)).map(rect)
+        .map(r => ({ x: r.x + sx, y: r.y + sy, right: r.right + sx, bottom: r.bottom + sy }));
       const bar = shell!.querySelector('.topbar'), dock = shell!.querySelector('.dock'), tour = shell!.querySelector('.tour-bar');
-      const headerBottom = bar ? rect(bar).bottom : 0;
-      const dockTop = Math.min(dock ? rect(dock).y : height, tour && visible(tour) ? rect(tour).y : height);
-      const nextKey = JSON.stringify([width, height, headerBottom, dockTop, ...blocks.map(r => Object.values(r).map(Math.round))]);
-      if (nextKey !== key) {
-        key = nextKey; stop();
+      headerBottom = bar ? rect(bar).bottom : 0;
+      dockTop = Math.min(dock ? rect(dock).y : height, tour && visible(tour) ? rect(tour).y : height);
+      const pageHeight = Math.max(document.documentElement.scrollHeight, sy + height);
+      const nextSize = `${width}x${height}`;
+      if (nextSize !== size) {
+        size = nextSize;
         const dpr = Math.min(devicePixelRatio || 1, 2);
         canvas!.width = Math.round(width * dpr); canvas!.height = Math.round(height * dpr);
         canvas!.style.height = `${height}px`; ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const roads = buildRoads(width, height, blocks, headerBottom, dockTop);
-        route = roads ? new AmbientRoute(roads) : null;
       }
+      const nextKey = JSON.stringify([width, Math.round(pageHeight), Math.round(headerBottom), ...blocks.map(r => Object.values(r).map(Math.round))]);
+      if (nextKey !== key) {
+        key = nextKey;
+        const roads = buildRoads(width, pageHeight, blocks, headerBottom, pageHeight);
+        const zones = roads ? splitZones(roads) : [];
+        if (!roads) routes = [];
+        else if (routes.length === zones.length) routes.forEach((m, i) => m.setRoads(roads, zones[i]));
+        else routes = zones.map((zone, i) => {
+          const m = new AmbientRoute(roads, Math.random, view(), zone);
+          if (i) m.hold = 1.6;   // a segunda parte um pouco depois, para as duas não andarem em sincronia
+          return m;
+        });
+      }
+      for (const m of routes) m.setView(view());
       palette(); if (!canRun()) stop(); draw(); start();
     }
     function queueMeasure() { if (!measureFrame && !disposed) measureFrame = requestAnimationFrame(measure); }
     const mutation = new MutationObserver(queueMeasure);
     mutation.observe(shell, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden', 'open'] });
-    const onScroll = () => {
-      scrolling = true; stop(); clear(); clearTimeout(scrollTimer);
-      scrollTimer = window.setTimeout(() => { scrolling = false; queueMeasure(); }, 120);
-    };
+    // Rolar só desloca o desenho: a rota continua de onde estava.
+    const onScroll = () => { for (const m of routes) m.setView(view()); if (!frame) draw(); };
     const onMotion = () => { stop(); clear(); queueMeasure(); };
     const onTheme = () => { palette(); draw(); };
     const onVisibility = () => { stop(); if (document.hidden) clear(); else queueMeasure(); };
@@ -139,7 +171,7 @@ export function AmbientRoutes({ pageKey }: { pageKey: string }) {
     document.addEventListener('visibilitychange', onVisibility);
     measure();
     return () => {
-      disposed = true; stop(); cancelAnimationFrame(measureFrame); clearTimeout(scrollTimer);
+      disposed = true; stop(); cancelAnimationFrame(measureFrame);
       resize.disconnect(); mutation.disconnect();
       window.removeEventListener('resize', queueMeasure); window.removeEventListener('scroll', onScroll);
       window.visualViewport?.removeEventListener('resize', queueMeasure);

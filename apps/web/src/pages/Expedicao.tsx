@@ -48,21 +48,35 @@ export function Expedicao() {
       </div>
       <section className="card">
         {ready.length === 0 ? <Empty>Nenhuma entrega pronta para esta região.</Empty> : (
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th /><th>Entrega</th><th>Bairro</th><th>Janela</th><th>Volumes</th></tr></thead>
-              <tbody>
-                {ready.map((o) => (
-                  <tr key={o.id}>
-                    <td><input type="checkbox" checked={selected.includes(o.id)} onChange={() => toggle(o.id)} aria-label={`Selecionar ${o.name}`} /></td>
-                    <td>#{o.id} {o.name}</td><td>{o.neighborhood}</td><td>{o.window}</td><td>{o.boxes.length}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="table-wrap has-cards">
+              <table>
+                <thead><tr><th /><th>Entrega</th><th>Bairro</th><th>Janela</th><th>Volumes</th></tr></thead>
+                <tbody>
+                  {ready.map((o) => (
+                    <tr key={o.id}>
+                      <td><input type="checkbox" checked={selected.includes(o.id)} onChange={() => toggle(o.id)} aria-label={`Selecionar ${o.name}`} /></td>
+                      <td>#{o.id} {o.name}</td><td>{o.neighborhood}</td><td className="nowrap">{o.window}</td><td>{o.boxes.length}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className="m-list">
+              {ready.map((o) => (
+                <li key={o.id}>
+                  <label className="m-row m-pick">
+                    <input type="checkbox" checked={selected.includes(o.id)} onChange={() => toggle(o.id)} aria-label={`Selecionar ${o.name}`} />
+                    <span className="m-title"><span className="m-code">#{o.id}</span>{o.name}</span>
+                    <span className="m-end">{o.boxes.length} vol.</span>
+                    <span className="m-sub">{o.neighborhood} · <span className="nowrap">{o.window}</span></span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
-        <div className="bar">
+        <div className={selected.length ? 'bar pinned' : 'bar'}>
           <label>Veículo
             <select value={vehicle} onChange={(e) => setVehicleId(Number(e.target.value))}>
               {freeVehicles.map((v) => <option key={v.id} value={v.id}>{v.name} · {v.capacity} vol.</option>)}
