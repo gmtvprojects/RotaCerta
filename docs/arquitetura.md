@@ -8,7 +8,7 @@ Quando uma decisão mudar, atualize aqui no mesmo PR.
 ```
 apps/web         App web (gestão, atendimento, expedição)        React + Vite + PWA
 apps/api         API e tempo real                                 Fastify + PostgreSQL
-apps/mobile      App do motorista (GPS em segundo plano)          Expo / React Native   [planejado]
+apps/mobile      App do motorista                                 Ionic React + Capacitor
 packages/domain  Regras de negócio, tipos e permissões            TypeScript puro
 packages/contracts Contratos HTTP e validação das fronteiras       Zod
 ```
@@ -23,7 +23,7 @@ Tudo em um monorepo (pnpm workspaces + Turborepo). Um repositório só, porque a
 | Linguagem | **TypeScript** (strict) em todo o código | Um idioma de ponta a ponta, tipos compartilhados |
 | Runtime | Node.js 22 | |
 | Gerenciador | pnpm 11 + Turborepo | |
-| Web | React 18, Vite, React Router, PWA | |
+| Web | React 19, Vite 6, React Router 6, PWA, **Astryx** (design system da Meta, tema `neutral`, fonte Figtree) | Ver 3.14 |
 | API | **Fastify 5** | Plugins: `@fastify/jwt`, `cors`, `rate-limit`, `websocket` |
 | Banco | **PostgreSQL 16** | Sem extensões proprietárias, para migrar para RDS sem retrabalho |
 | ORM / migrações | **Drizzle ORM** + drizzle-kit | SQL versionado em `apps/api/drizzle` |
@@ -32,7 +32,7 @@ Tudo em um monorepo (pnpm workspaces + Turborepo). Um repositório só, porque a
 | Testes | **Vitest** + PGlite (Postgres em memória) | Testa o schema e as migrações de verdade, sem Docker |
 | Build da API | tsup (esbuild) | Embute `@rotacerta/domain` no bundle |
 | Container | Docker (`apps/api/Dockerfile`) | Mesmo container no Railway e na AWS |
-| Mobile (futuro) | Expo / React Native | GPS em segundo plano, push |
+| Mobile | Ionic React + Capacitor | GPS em segundo plano exige plugin nativo; push |
 | Avisos (futuro) | WhatsApp Cloud API (Meta) + fila BullMQ/Redis | |
 
 ## 3. Padrões de projeto
@@ -66,7 +66,7 @@ O teste `workspace.test.ts` garante que *o que sai do banco é idêntico ao seed
 Dependências externas ficam atrás de uma interface, com implementação trocável:
 - `NotificationSender` (`src/notifications/sender.ts`): hoje `SimulatedSender`; depois, WhatsApp Cloud API.
 - `Db`: o mesmo código roda em `node-postgres` (produção) e PGlite (testes).
-- `EventBus` (`src/realtime/events.ts`): em memória hoje; Redis pub/sub quando houver mais de uma instância.
+- `EventBus` (`src/realtime/events.ts`): em memória; com `REDIS_URL` os eventos passam por Redis pub/sub e chegam aos aparelhos de qualquer réplica (se o Redis cair, a instância segue com os eventos locais).
 
 ### 3.5 Camadas da API
 ```
@@ -99,7 +99,9 @@ O front esconde telas por perfil (`ALLOWED_PAGES`), mas **a API é quem garante*
 - **Retenção (dado pessoal):** posições ficam `LOCATION_RETENTION_DAYS` dias (padrão 30) e são apagadas por uma rotina que roda ao subir e a cada 6 h. Informe os motoristas sobre a coleta (o app web já avisa que a posição é compartilhada durante a viagem).
 - **Fora da auditoria:** envio de posição não é ação de usuário e não entra em `audit_log`.
 - **Web:** o motorista no navegador só compartilha com a tela aberta (navegador não rastreia em segundo plano); para segundo plano, o app Expo. Mapa com Leaflet; tiles via `VITE_MAP_TILES_URL` (padrão OpenStreetMap, só para uso leve: em produção contrate um provedor).
-- **Simulador:** `pnpm --filter @rotacerta/api simulate:driver` envia um percurso fictício para demonstrar o painel.
+- **Envio pelo motorista:** um "farol" montado uma vez no app (web: `DriverBeacon`; app Ionic: `useDriverBeacon`) envia a posição durante a viagem ativa em **qualquer tela**, não só na tela da viagem. A fila de pontos não enviados fica guardada no aparelho.
+- **Painel (Acompanhar viagens):** lista das viagens ao vivo, marcador com a direção do movimento que desliza entre os pontos, "Seguir motorista" (desliga ao arrastar o mapa), selo Ao vivo / Sinal fraco / Sem sinal, velocidade e precisão. A trilha mostra os pontos mais recentes e é quebrada em trechos quando há mais de 2 min sem sinal.
+- **Simulador:** no ambiente de teste, o botão "Simular deslocamento" do painel (`POST/DELETE /api/routes/:id/simulate`) faz o motorista andar por ruas por 15 min; em produção a rota nem existe. Pela linha de comando: `pnpm --filter @rotacerta/api simulate:driver` (mesmo percurso).
 
 ### 3.9 Regras de exceção da operação
 Ficam em `packages/domain` (`rules.ts`, `operations.ts`, `clients.ts`, `config.ts`), com a mesma mensagem de erro no servidor e na tela.
@@ -138,6 +140,42 @@ em vez de vazar dados de outra.
 ### 3.10 Configuração (12-factor)
 Tudo por variáveis de ambiente, validadas na subida (`src/config.ts`); nada específico de plataforma no código.
 Segredos nunca entram no repositório (`.env` ignorado; usar `.env.example` como modelo).
+
+### 3.12 Segurança de borda
+- **API:** `@fastify/helmet` (CSP `default-src 'none'`, `nosniff`, sem frames; HSTS em produção). `trustProxy` ligado em produção (`TRUST_PROXY` para ajustar): sem ele o limite de login e a auditoria veriam o IP do proxy. Teto de `WRITE_RATE_MAX` escritas por minuto e por IP (o envio de posições fica de fora).
+- **Conta:** `LOGIN_LOCK_FAILURES` falhas seguidas bloqueiam a conta por `LOGIN_LOCK_MINUTES` minutos; a resposta é a mesma de uma senha errada (não revela que o e-mail existe) e o bloqueio fica na auditoria (`auth.account_locked`).
+- **Site (nginx):** `apps/web/security-headers.conf` define CSP (scripts só do próprio site), `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` e HSTS. O arquivo é incluído em cada `location`, porque o nginx não herda `add_header`. Se a API ou os tiles do mapa usarem outro esquema que não HTTPS, ajuste `connect-src` e `img-src`.
+- **Cadeia de suprimentos:** o CI roda `pnpm audit --prod` (falha em crítica), gitleaks e CodeQL; o Dependabot abre PRs semanais. Pendentes sem correção publicada: `picomatch` e `react-router` 5 dentro do Ionic.
+- **Rastreio:** toda resposta traz `x-request-id`, o mesmo `reqId` dos logs.
+
+### 3.13 Despacho de avisos
+O domínio cria o aviso como `queued`; o despachante (`src/notifications/dispatcher.ts`) envia a fila de todas as empresas ativas a cada 5 s, com trava consultiva (uma instância por vez) e envio fora da transação da empresa. Sucesso vira `delivered`; falha vira `failed` com o motivo e a gestão reenvia. Para o WhatsApp real, implemente `NotificationSender`.
+
+### 3.14 Design system (Astryx)
+O web usa o Astryx (`@astryxdesign/core`, tema `@astryxdesign/theme-neutral`, MIT, em beta). Exige React 19.
+- **Já em componentes do Astryx:** casca do app (`app/Shell.tsx`: `AppShell`, `SideNav`, `TopNav`, `Button`, `Avatar`, `Badge`), cabeçalho de página (`Heading`/`Text`), selos de estado (`Badge`) e janelas (`Dialog`), todos em `pages/ui.tsx`.
+- **Ainda no markup antigo:** cartões, tabelas, listas, campos e botões das telas. Eles leem os tokens do Astryx por uma ponte (`src/theme-astryx.css`), então já têm a mesma fonte, cores e raios. Ao migrar uma tela, troque o markup por componentes e apague as regras que sobrarem na ponte.
+- **Camadas de CSS** (`tailwind.css`): `reset, theme, base, components, astryx-base, astryx-theme, utilities`. O CSS antigo fica em `components`, abaixo do Astryx: um botão do Astryx não é afetado pelas regras globais antigas de `button`.
+- **Fonte** self-hosted (`@fontsource-variable/figtree`); não se usa o `fonts.css` do tema (puxaria do Google Fonts e quebraria a CSP).
+- **Instalação:** os scripts de instalação do Astryx estão desligados em `pnpm-workspace.yaml` (só imprimem uma dica). Um `packageExtensions` aponta os tipos dele para o `@types/react` 19 (o app mobile segue no React 18).
+- **Navegação:** menu lateral (`SideNav`) no computador ou barra embaixo, a escolha em Perfil/Configurações. Em telas estreitas, sempre a barra de baixo.
+
+### 3.15 Agentes de IA (aba "Agentes de IA")
+Assistentes que a gestão cria pela tela e que a equipe usa para perguntar sobre a operação em linguagem natural.
+Mesmo desenho do projeto de referência (`chatbot-ia/relatorios_automaticos`): o **código** decide ordem, limites e o caminho seguro; o modelo só escolhe quais consultas fazer e escreve a resposta.
+- **Agente = configuração** (tabela `agents` no schema da empresa): nome, descrição, instruções, modelo, esforço, ferramentas liberadas, perfis que podem usar, base de conhecimento, ativo. Criar outro agente não exige código.
+- **Ferramentas** (`src/agents/tools.ts`): catálogo genérico, todas de **leitura**, com schema estrito. Rodam sobre os dados que o perfil de quem pergunta já vê (`scopeFor`, o mesmo filtro do `/api/dataset`), e cada uma declara os perfis que podem usá-la (ex.: localização só para gestão e expedição). Nova ferramenta = um item no array; a tela lista o catálogo sozinha.
+- **Loop** (`src/agents/runtime.ts`): Messages API da Anthropic (SDK oficial `@anthropic-ai/sdk`) com ferramentas, até 6 rodadas por pergunta, resultado de ferramenta limitado, regras da plataforma acima das instruções do agente, resultados e mensagens tratados como dados (defesa contra injeção de instruções). Recusa, corte e falha da IA viram respostas claras. Recusa por política usa o modelo reserva padrão da própria API (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`).
+- **Modelo:** padrão `claude-opus-5-5`; a tela oferece também Sonnet 5.5 e Haiku 5.5 (mais baratos) e o esforço (baixo/médio/alto). A parte fixa do prompt fica em cache entre perguntas.
+- **Privacidade e custo:** o texto das conversas não é guardado (o histórico fica no aparelho); a API grava só o uso por dia e agente (`agent_usage`), que a tela mostra com custo estimado. Teto de 20 perguntas/min por IP e `AGENT_DAILY_LIMIT` conversas/dia por empresa.
+- **Configuração:** `ANTHROPIC_API_KEY` na API. Sem ela, a aba funciona para criar e configurar, e a conversa avisa que a IA não está ligada.
+- **Por que não Managed Agents:** as ferramentas precisam rodar dentro da API, no schema da empresa e com o perfil de quem pergunta. Se no futuro houver agentes que trabalhem sozinhos por muito tempo (relatórios agendados, por exemplo), o Claude Managed Agents hospeda o loop e um ambiente isolado.
+
+### 3.16 Rastreio do cliente (link público)
+Na ficha da entrega, a equipe gera um link (`POST /api/orders/:id/tracking-link`) para mandar ao cliente. A página `/#/rastreio/<token>` abre sem login e se atualiza sozinha (`GET /api/public/tracking/:token`, 30/min por IP).
+- **Token:** `empresa.entrega.validade` assinado com HMAC (chave derivada do `JWT_SECRET` com rótulo próprio). Vale 3 dias; empresa suspensa invalida.
+- **O que o cliente vê:** primeiro nome, situação em 4 passos, janela, quantas entregas antes da dele e, **só quando ele é a parada atual**, a posição do entregador no mapa. Nunca endereço, telefone ou dados de outros clientes.
+- **GPS no aparelho do motorista:** a fila de pontos não enviados fica guardada no aparelho (web e app), então fechar ou recarregar o app sem sinal não perde o percurso.
 
 ## 4. Convenções
 
@@ -242,7 +280,7 @@ variável `RAILWAY_DOCKERFILE_PATH`, e o health check fica em *Settings → Depl
 
 - Sem `AMBIENTE_TESTE` / `AMBIENTE_PRODUCAO` a API não sobe ("Ative exatamente um ambiente"). `NODE_ENV` não precisa
   ser definido: o ambiente ativo decide.
-- A API aplica as migrações ao subir e responde `/ready` (200 só com o banco acessível).
+- O container aplica as migrações antes de iniciar (`migrate-cli`; com várias réplicas, rode-o como *pre-deploy command* do Railway e deixe só o `node dist/server.js` no start) e a API responde `/ready` (200 só com o banco acessível).
 - O site é estático (nginx) com fallback para `index.html`; `sw.js` e o manifesto são servidos com `no-cache`.
 - Banco vazio em produção (sem seed): crie o **administrador da plataforma** com `ADMIN_NAME`, `ADMIN_EMAIL`,
   `ADMIN_PASSWORD` e `DATABASE_URL` (URL pública do Postgres) e rode `pnpm --filter @rotacerta/api db:create-admin`.
@@ -257,9 +295,9 @@ variável `RAILWAY_DOCKERFILE_PATH`, e o health check fica em *Settings → Depl
 
 1. ~~Conectar o web à API~~ **feito** (seção 6.1). Resta: modo offline (hoje o app precisa de internet).
 2. ~~GPS do motorista (API, painel e envio pelo navegador)~~ **feito**. Resta: app Expo com rastreamento em segundo plano; **ETA e chegada à parada**, que exigem coordenadas dos endereços (geocodificação) — hoje as entregas só têm endereço em texto; tiles de mapa de produção.
-3. **WhatsApp real**: implementar `NotificationSender` com a Cloud API (templates aprovados) e fila com reenvio; hoje o domínio já marca o aviso como entregue na hora (simulado).
-4. ~~Sessão e usuários~~ **feito**. Resta: recuperação de senha por e-mail e bloqueio por conta após muitas falhas (hoje o limite é por IP).
-5. **Escala**: Redis pub/sub no `EventBus` para várias instâncias; limitar o estado carregado por escrita (ver 3.2).
+3. **WhatsApp real**: implementar `NotificationSender` com a Cloud API (templates aprovados). A fila e o despacho já existem (3.13); falta reenvio automático com limite de tentativas e *dead-letter*.
+4. ~~Sessão e usuários~~ **feito**. ~~Bloqueio por conta~~ **feito** (3.12). Resta: recuperação de senha por e-mail e 2FA (TOTP) para gestão e plataforma.
+5. **Escala**: ~~Redis pub/sub no `EventBus`~~ **feito** (`REDIS_URL`). Resta: limitar o estado carregado por escrita (ver 3.2).
 6. ~~Privacidade do motorista~~ **feito**. Resta: rever o que a expedição precisa ver de cada cliente.
 7. **Rascunho e planejamento** (`draft`, `plan`) continuam locais ao navegador; avaliar persistir no servidor.
 8. **Infra como código** (Terraform/CDK) só na fase AWS.

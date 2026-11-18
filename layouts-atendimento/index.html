@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layouts do Atendimento · RotaCerta</title><link rel="stylesheet" href="base.css">
+<style>
+body { padding: 40px 24px 80px; } .wrap { max-width: 1100px; margin: 0 auto; }
+h1 { font-size: 28px; font-weight: 700; } .lead { margin: 8px 0 28px; max-width: 64ch; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+.opt { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: grid; transition: border-color .15s, transform .15s; }
+.opt:hover { border-color: var(--accent); transform: translateY(-2px); }
+.thumb { aspect-ratio: 16 / 10; background: var(--muted-bg); padding: 14px; display: grid; }
+.mock { background: var(--surface); border-radius: 10px; border: 1px solid var(--line); display: grid; padding: 10px; gap: 8px; overflow: hidden; align-content: start; }
+.mock i { display: block; background: var(--line); border-radius: 4px; height: 8px; } .mock i.a { background: var(--accent); } .mock i.s { background: var(--soft); }
+.info { padding: 16px 18px 18px; display: grid; gap: 8px; } .info b { font-size: 16px; font-weight: 650; } .num { color: var(--accent); }
+.pros { display: grid; gap: 3px; font-size: 13px; color: var(--muted); } .pros span::before { content: "• "; }
+.go { margin-top: 6px; justify-self: start; }
+</style></head><body><div class="wrap">
+<h1>Layouts da tela de Atendimento</h1>
+<p class="lead">Cinco jeitos de organizar o fluxo do atendente: ver o que está pendente e cadastrar uma nova entrega (cliente, endereço, janela e avisos). Abra cada um e me diga o número do que preferir. Mesmo tema azul, claro/escuro automático.</p>
+<div class="grid">
+
+<a class="opt" href="1-painel-e-formulario.html"><div class="thumb"><div class="mock" style="grid-template-columns:1.6fr 1fr"><div class="a" style="background:var(--accent);border-radius:8px;height:44px"></div><div style="display:grid;gap:5px"><i class="s" style="height:12px"></i><i class="s" style="height:12px"></i></div><i style="grid-column:1/3;width:30%"></i><div style="grid-column:1/3;display:grid;grid-template-columns:repeat(4,1fr);gap:6px"><i class="s" style="height:18px"></i><i class="s" style="height:18px"></i><i class="s" style="height:18px"></i><i class="s" style="height:18px"></i></div></div></div>
+<div class="info"><b><span class="num">1.</span> Painel e formulário</b><div class="pros"><span>É o que existe hoje, refinado</span><span>Início com destaque + atalhos; cadastro em tela própria</span><span>Alterna entre Início e Nova entrega</span></div><span class="btn sm go">Abrir</span></div></a>
+
+<a class="opt" href="2-balcao-dividido.html"><div class="thumb"><div class="mock" style="grid-template-columns:1.4fr 1fr"><div style="display:grid;gap:6px"><i style="width:40%"></i><i class="s" style="height:14px"></i><i class="s" style="height:14px"></i><i class="s" style="height:14px"></i></div><div style="display:grid;gap:6px;border-left:2px solid var(--line);padding-left:8px"><i class="a" style="width:60%"></i><i></i><i></i><i></i></div></div></div>
+<div class="info"><b><span class="num">2.</span> Balcão dividido</b><div class="pros"><span>Formulário sempre à esquerda, fila à direita</span><span>Cadastra um cliente atrás do outro sem trocar de tela</span><span>Melhor em monitor largo</span></div><span class="btn sm go">Abrir</span></div></a>
+
+<a class="opt" href="3-passo-a-passo.html"><div class="thumb"><div class="mock" style="grid-template-columns:30% 1fr"><div style="display:grid;gap:6px;align-content:start"><i class="a" style="height:12px"></i><i class="s" style="height:12px"></i><i class="s" style="height:12px"></i><i class="s" style="height:12px"></i></div><div style="display:grid;gap:6px;align-content:start"><i style="width:50%"></i><i class="s" style="height:16px"></i><i class="s" style="height:16px"></i></div></div></div>
+<div class="info"><b><span class="num">3.</span> Passo a passo</b><div class="pros"><span>Um passo por vez, com resumo fixo</span><span>Cliente → Endereço → Entrega → Caixas</span><span>Menos erro para quem está começando</span></div><span class="btn sm go">Abrir</span></div></a>
+
+<a class="opt" href="4-fila-em-colunas.html"><div class="thumb"><div class="mock" style="grid-template-columns:repeat(4,1fr)"><div style="display:grid;gap:5px;align-content:start"><i class="a"></i><i class="s" style="height:16px"></i></div><div style="display:grid;gap:5px;align-content:start"><i class="a"></i><i class="s" style="height:16px"></i><i class="s" style="height:16px"></i></div><div style="display:grid;gap:5px;align-content:start"><i class="a"></i><i class="s" style="height:16px"></i></div><div style="display:grid;gap:5px;align-content:start"><i class="a"></i><i class="s" style="height:16px"></i><i class="s" style="height:16px"></i></div></div></div>
+<div class="info"><b><span class="num">4.</span> Fila em colunas</b><div class="pros"><span>Rascunho · Aguardando · Em andamento · Concluídas</span><span>Nova entrega abre num painel lateral</span><span>Boa visão de onde está cada compra</span></div><span class="btn sm go">Abrir</span></div></a>
+
+<a class="opt" href="5-cliente-primeiro.html"><div class="thumb"><div class="mock" style="justify-items:center"><i class="s" style="width:70%;height:22px;border-radius:12px"></i><i style="width:60%;height:14px"></i><i style="width:60%;height:14px"></i><i style="width:60%;height:14px"></i></div></div>
+<div class="info"><b><span class="num">5.</span> Cliente primeiro</b><div class="pros"><span>Começa por uma busca grande (telefone ou nome)</span><span>Cliente conhecido: só pede a janela e os avisos</span><span>Mais rápido para clientes recorrentes</span></div><span class="btn sm go">Abrir</span></div></a>
+
+</div></div></body></html>

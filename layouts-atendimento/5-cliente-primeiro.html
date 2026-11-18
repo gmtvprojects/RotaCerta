@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atendimento · Layout 5 · Cliente primeiro</title><link rel="stylesheet" href="base.css"><link rel="stylesheet" href="extra.css"></head><body>
+<div id="root"></div><script src="shared.js"></script>
+<script>
+  const CLIENTS = [['Maria Oliveira', '(00) 90000-0101', 'Rua das Acácias, 80 · Centro'], ['Mariana Costa', '(00) 90000-0188', 'Rua do Comércio, 12 · Vila Nova'], ['Marcos Costa', '(00) 90000-0150', 'Rua Bela Vista, 220 · São Lucas']];
+  const root = document.getElementById('root');
+  function busca(q) {
+    const list = q ? CLIENTS.filter((c) => (c[0] + c[1]).toLowerCase().includes(q.toLowerCase())) : [];
+    root.innerHTML = appShell(
+      '<div class="big-search">' + icon('search') + '<input id="q" placeholder="Telefone ou nome do cliente" value="' + (q || '') + '" oninput="busca(this.value)" autofocus></div>'
+      + '<div style="max-width:640px;margin:0 auto;display:grid;gap:10px">'
+      + (list.length ? list.map((c, i) => '<button class="result" onclick="cliente(' + CLIENTS.indexOf(c) + ')"><span class="avatar">' + c[0][0] + '</span><span style="flex:1"><b>' + c[0] + '</b><div class="muted small">' + c[1] + ' · ' + c[2] + '</div></span><span class="badge info">Usar dados</span></button>').join('')
+        : q ? '<div class="card" style="text-align:center"><p class="muted">Nenhum cliente com "' + q + '".</p><a class="btn primary" style="margin-top:10px" href="#" onclick="novo();return false">Cadastrar novo cliente</a></div>'
+        : '<p class="muted" style="text-align:center">Digite ao menos 3 caracteres. Se o cliente já comprou antes, o endereço vem preenchido.</p><p style="text-align:center;margin-top:6px"><a class="btn sm" href="#" onclick="novo();return false">Cliente novo</a> <a class="btn sm" href="#">' + icon('camera') + ' Ficha de papel</a></p>')
+      + '</div>'
+      + '<h2 style="font-size:15px;margin:36px 0 8px;text-align:center" class="muted">Aguardando caixas</h2><div class="card" style="max-width:640px;margin:0 auto">' + AWAITING.map(orderRow).join('') + '</div>',
+      'Atendimento', 'Comece pelo cliente. O resto do cadastro só pede o que falta.');
+    const el = document.getElementById('q'); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  }
+  function cliente(i) {
+    const c = CLIENTS[i];
+    root.innerHTML = appShell(
+      '<div style="max-width:720px;margin:0 auto" class="pad"><div class="card" style="display:flex;gap:14px;align-items:center"><span class="avatar">' + c[0][0] + '</span><div style="flex:1"><b>' + c[0] + '</b><div class="muted small">' + c[1] + ' · ' + c[2] + '</div></div><a class="btn sm" href="#" onclick="busca();return false">Trocar</a></div>'
+      + '<div class="card pad"><h2 style="font-size:17px">Só falta a entrega</h2>' + F.janela() + F.extras() + '<details><summary class="muted" style="cursor:pointer;font-weight:600">Alterar o endereço</summary><div style="margin-top:12px">' + F.endereco() + '</div></details>'
+      + '<div style="display:flex;justify-content:flex-end"><a class="btn primary" href="#">Cadastrar e registrar caixas</a></div></div></div>',
+      'Nova entrega', 'Cliente encontrado: dados preenchidos.');
+  }
+  function novo() { root.innerHTML = appShell('<div style="max-width:720px;margin:0 auto" class="card pad"><div class="grid2"><div class="field"><label>Nome</label><input class="input"></div><div class="field"><label>Telefone</label><input class="input"></div></div>' + F.endereco() + F.janela() + F.extras() + '<div style="display:flex;justify-content:flex-end"><a class="btn primary" href="#">Cadastrar e registrar caixas</a></div></div>', 'Nova entrega', 'Cliente novo.'); }
+  busca('mar');
+</script></body></html>

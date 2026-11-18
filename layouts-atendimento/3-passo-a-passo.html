@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atendimento · Layout 3 · Passo a passo</title><link rel="stylesheet" href="base.css"><link rel="stylesheet" href="extra.css"></head><body>
+<div id="root"></div><script src="shared.js"></script>
+<script>
+  const STEPS = [
+    ['Cliente', 'Quem vai receber', () => F.search() + F.cliente()],
+    ['Endereço', 'Onde entregar', () => F.endereco()],
+    ['Entrega', 'Janela e avisos', () => F.janela() + F.extras()],
+    ['Caixas', 'Volumes, após o caixa', () => '<div class="row"><div><div class="t">CX-031 · Ambiente</div><div class="muted small">Área de expedição</div></div><a class="btn sm" href="#">Remover</a></div><div class="row"><div><div class="t">CX-032 · Frio</div><div class="muted small">Câmara fria</div></div><a class="btn sm" href="#">Remover</a></div><a class="btn" href="#" style="margin-top:6px">' + icon('plus') + ' Adicionar caixa</a>'],
+  ];
+  let cur = 0;
+  function render() {
+    const rail = STEPS.map((s, i) => '<button class="step ' + (i === cur ? 'on' : i < cur ? 'done' : '') + '" onclick="go(' + i + ')"><span class="n">' + (i < cur ? icon('check', 14) : i + 1) + '</span><span><b>' + s[0] + '</b><span class="d">' + s[1] + '</span></span></button>').join('');
+    const summary = '<div class="card" style="margin-top:14px"><div class="muted small" style="margin-bottom:6px">Resumo</div><b>Maria Oliveira</b><div class="muted small">Rua das Acácias, 80 · Centro</div><div class="muted small">14:00–16:00 · avisos por WhatsApp</div></div>';
+    document.getElementById('root').innerHTML = appShell(
+      '<div style="display:grid;grid-template-columns:260px 1fr;gap:28px;align-items:start"><div class="sticky"><div class="steps">' + rail + '</div>' + summary + '</div>'
+      + '<div class="card pad"><div><span class="badge info">Passo ' + (cur + 1) + ' de ' + STEPS.length + '</span><h2 style="font-size:20px;margin-top:8px">' + STEPS[cur][1] + '</h2></div>' + STEPS[cur][2]()
+      + '<div style="display:flex;justify-content:space-between;margin-top:6px"><button class="btn" ' + (cur === 0 ? 'disabled style="opacity:.4"' : 'onclick="go(' + (cur - 1) + ')"') + '>Voltar</button><button class="btn primary" onclick="go(' + Math.min(cur + 1, STEPS.length - 1) + ')">' + (cur === STEPS.length - 1 ? 'Concluir atendimento' : 'Continuar') + '</button></div></div></div>',
+      'Nova entrega', 'Um passo de cada vez, com o resumo sempre à vista.');
+  }
+  function go(i) { cur = i; render(); }
+  render();
+</script></body></html>

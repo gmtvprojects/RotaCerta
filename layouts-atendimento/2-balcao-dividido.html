@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atendimento · Layout 2 · Balcão dividido</title><link rel="stylesheet" href="base.css"><link rel="stylesheet" href="extra.css"></head><body>
+<div id="root"></div><script src="shared.js"></script>
+<script>
+  const queue = '<div class="card sticky"><div class="col-title"><h2>Aguardando caixas</h2><span class="count">3</span></div>' + AWAITING.map(orderRow).join('')
+    + '<div class="col-title" style="margin-top:18px"><h2>Hoje</h2><span class="count">4</span></div>' + TODAY.map(orderRow).join('') + '</div>';
+  document.getElementById('root').innerHTML = appShell(
+    '<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px;align-items:start"><div class="card pad"><div class="col-title" style="margin:0"><h2 style="font-size:17px">Nova entrega</h2><span class="badge ok">Rascunho salvo</span></div>' + F.all()
+    + '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px"><a class="btn" href="#">Descartar</a><a class="btn primary" href="#">Cadastrar e registrar caixas</a></div></div>' + queue + '</div>',
+    'Atendimento', 'O cadastro fica sempre à esquerda; a fila do dia, à direita. Sem trocar de tela entre um cliente e outro.');
+</script></body></html>

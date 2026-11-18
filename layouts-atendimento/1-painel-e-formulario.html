@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atendimento · Layout 1 · Painel e formulário</title><link rel="stylesheet" href="base.css"><link rel="stylesheet" href="extra.css"></head><body>
+<div id="root"></div><script src="shared.js"></script>
+<script>
+  const root = document.getElementById('root');
+  const sw = (c) => viewSwitch(c, 'inicio()', 'nova()');
+  function inicio() {
+    root.innerHTML = appShell(
+      '<div style="display:grid;grid-template-columns:1.7fr 1fr;gap:16px;margin-bottom:24px"><section class="hero"><span class="badge">Aguardando volumes</span><div><strong>3 compra(s) esperando as caixas</strong><p>Cadastre uma nova entrega quando o cliente chegar ao caixa.</p></div><a class="btn" href="#">Continuar atendimento</a></section>'
+      + '<div style="display:grid;gap:10px"><div class="stat"><b>3</b><span>Aguardando caixas</span></div><div class="stat"><b style="color:var(--ok)">7</b><span>Entregues hoje</span></div><div class="stat"><b>30</b><span>Entregas cadastradas</span></div></div></div>'
+      + '<h2 style="font-size:17px;margin-bottom:12px">Atalhos</h2><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'
+      + ['Nova entrega|Cadastre o cliente e o endereço.', 'Continuar atendimento|3 compras aguardando caixas', 'Ficha de papel|Fotografe a ficha, revise e crie a entrega.', 'Consultar entregas|Encontre uma compra pelo cliente ou código.'].map((t) => '<a class="card" href="#" style="display:grid;gap:4px"><b>' + t.split('|')[0] + '</b><span class="muted small">' + t.split('|')[1] + '</span></a>').join('') + '</div>',
+      'Olá, Marina', 'quarta-feira, 18 de novembro', sw('a'));
+  }
+  function nova() {
+    root.innerHTML = appShell(
+      '<div class="card pad"><h2 style="font-size:17px">Quem vai receber?</h2>' + F.search() + F.cliente() + '<h2 style="font-size:17px;margin-top:6px">Endereço</h2>' + F.endereco() + '<h2 style="font-size:17px;margin-top:6px">Entrega</h2>' + F.janela() + F.extras()
+      + '<div style="display:flex;gap:10px;justify-content:flex-end"><a class="btn" href="#">Descartar</a><a class="btn primary" href="#">Cadastrar e registrar caixas</a></div></div>',
+      'Nova entrega', 'Identifique o cliente, confirme o endereço e cadastre.', sw('b'));
+  }
+  inicio();
+</script></body></html>

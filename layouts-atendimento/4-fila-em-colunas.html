@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atendimento · Layout 4 · Fila em colunas</title><link rel="stylesheet" href="base.css"><link rel="stylesheet" href="extra.css"></head><body>
+<div id="root"></div>
+<div class="drawer-back" id="back" onclick="toggle(false)"></div>
+<aside class="drawer" id="drawer" aria-label="Nova entrega"></aside>
+<script src="shared.js"></script>
+<script>
+  const k = (o) => '<div class="kcard"><b>' + o.name + '</b><span class="muted small">#' + o.id + ' · ' + o.hood + '</span>' + (o.when ? '<span class="muted small">' + o.when + '</span>' : '') + '</div>';
+  const col = (t, arr) => '<section><div class="col-title"><h2>' + t + '</h2><span class="count">' + arr.length + '</span></div>' + arr.map(k).join('') + '</section>';
+  document.getElementById('root').innerHTML = appShell(
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:start">'
+    + col('Rascunho', [{ id: 132, name: 'Maria Oliveira', hood: 'Centro', when: 'não salvo' }]) + col('Aguardando caixas', AWAITING)
+    + col('Em andamento', TODAY.filter((o) => o.status !== 'Entregue')) + col('Concluídas hoje', TODAY.filter((o) => o.status === 'Entregue').concat([{ id: 124, name: 'Ana Souza', hood: 'Vila Nova' }])) + '</div>',
+    'Atendimento', 'Veja onde cada compra está. A nova entrega abre num painel ao lado, sem sair da fila.',
+    '<button class="btn primary" onclick="toggle(true)">' + icon('plus') + ' Nova entrega</button>');
+  document.getElementById('drawer').innerHTML = '<div class="col-title"><h2 style="font-size:18px">Nova entrega</h2><button class="btn sm ghost" onclick="toggle(false)" aria-label="Fechar">' + icon('x') + '</button></div><div class="pad">' + F.all() + '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="toggle(false)">Cancelar</button><a class="btn primary" href="#">Cadastrar</a></div></div>';
+  function toggle(open) { document.getElementById('drawer').classList.toggle('open', open); document.getElementById('back').classList.toggle('open', open); }
+</script></body></html>
