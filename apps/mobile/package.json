@@ -1,0 +1,38 @@
+{
+  "name": "@rotacerta/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview",
+    "cap:sync": "cap sync",
+    "cap:android": "cap open android",
+    "cap:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.6.2",
+    "@fontsource-variable/public-sans": "^5.3.0",
+    "@ionic/react": "9.0.12",
+    "@ionic/react-router": "9.0.12",
+    "@rotacerta/contracts": "workspace:*",
+    "@rotacerta/domain": "workspace:*",
+    "ionicons": "8.1.0",
+    "motion": "^14.14.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router": "^6.30.6",
+    "react-router-dom": "^6.30.6",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21"
+  }
+}

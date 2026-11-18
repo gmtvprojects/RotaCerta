@@ -15,7 +15,8 @@ Detalhes em [docs/funcionalidades.md](docs/funcionalidades.md).
 
 ## Estrutura (monorepo)
 ```
-apps/web           app web (Vite + React + TS): todos os perfis, dados fixos por enquanto
+apps/web           app web (Vite + React + TS): todos os perfis
+apps/mobile        app do motorista (Ionic React + Capacitor), no estilo das telas "Rota"
 apps/api           API (Fastify + PostgreSQL + Drizzle): auth por perfil, regras, WebSocket
 packages/domain    regras de negócio puras, tipos, papéis, permissões e dados fixos (seed)
 packages/contracts contratos HTTP compartilhados e schemas Zod de entrada/saída
@@ -41,6 +42,23 @@ pnpm --filter @rotacerta/web dev   # http://localhost:5173
 pnpm test                                # testes da API (sem Docker)
 pnpm demo   # abre o demo de referência
 ```
+
+### App do motorista (Ionic)
+```bash
+pnpm --filter @rotacerta/mobile dev      # http://localhost:5175 (use o modo celular do navegador)
+```
+Fala com a mesma API (`VITE_API_URL`, padrão `http://localhost:3333`). A API precisa aceitar a origem do app:
+`CORS_ORIGIN=http://localhost:5173,http://localhost:5175` em `apps/api/.env`. Entre com `motorista@rotacerta.local`.
+
+Para gerar o app nativo (Android/iOS) com Capacitor:
+```bash
+cd apps/mobile
+VITE_API_URL=https://sua-api pnpm build
+npx cap add android            # uma vez (ou: npx cap add ios)
+npx cap sync && npx cap open android
+```
+No aparelho o app roda em outra origem: a API precisa de HTTPS com `COOKIE_SAMESITE=none` e `COOKIE_SECURE=true`,
+e a origem do app (`capacitor://localhost`, `http://localhost`) em `CORS_ORIGIN`.
 
 Para rodar a API com banco, veja [docs/arquitetura.md](docs/arquitetura.md#6-rodando-localmente).
 
