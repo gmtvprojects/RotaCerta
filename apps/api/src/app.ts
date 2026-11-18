@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
@@ -12,16 +13,24 @@ import { audit } from './db/audit';
 import type { Db } from './db/client';
 import { mutate, readWorkspace, type Mutation } from './db/unit-of-work';
 import type { AuthUser } from './http/context';
+import Anthropic from '@anthropic-ai/sdk';
+import type { LlmClient } from './agents/runtime';
+import { registerAgentRoutes } from './http/agents';
 import { registerAuthRoutes } from './http/auth';
 import { registerBusinessRoutes } from './http/business';
 import { registerOperationRoutes } from './http/operations';
 import { registerPlatformRoutes } from './http/platform';
+import { registerPublicTrackingRoutes } from './http/public-tracking';
 import { registerTrackingRoutes } from './http/tracking';
 import { scopeFor } from './privacy';
 import { EventBus } from './realtime/events';
 import { type NotificationSender, SimulatedSender } from './notifications/sender';
 
-export interface AppDeps { config: Config; db: Db; events?: EventBus; sender?: NotificationSender }
+export interface AppDeps {
+  config: Config; db: Db; events?: EventBus; sender?: NotificationSender;
+  /** Cliente da IA. Sem ele (e sem ANTHROPIC_API_KEY), os agentes ficam só para configuração. Os testes passam um falso. */
+  llm?: LlmClient | null;
+}
 
 /** Contexto entregue a cada rota de negócio. */
 export interface Ctx {
@@ -46,12 +55,22 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       level: 'info',
       // o token do WebSocket vai na URL: nunca registrar a query string
       serializers: { req: (req) => ({ method: req.method, url: req.url?.split('?')[0], remoteAddress: req.ip }) },
-    }, bodyLimit: 2 * 1024 * 1024 });
+    }, bodyLimit: 2 * 1024 * 1024,
+    // atrás de proxy (Railway, ALB) o IP real vem de X-Forwarded-For; sem isso o limite de login e a auditoria veem o IP do proxy
+    trustProxy: (config.TRUST_PROXY ?? (config.APP_ENV === 'production' ? 'true' : 'false')) === 'true' });
 
+  // API só devolve JSON: CSP fechada, sem frames, sem sniffing; HSTS só faz sentido sobre HTTPS (produção)
+  await app.register(helmet, { contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } }, crossOriginResourcePolicy: { policy: 'cross-origin' }, hsts: config.APP_ENV === 'production' });
   await app.register(cors, { origin: config.CORS_ORIGIN.split(',').map((s) => s.trim()), credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] });
   await app.register(cookie);
   await app.register(jwt, { secret: config.JWT_SECRET, sign: { expiresIn: config.JWT_EXPIRES_IN } });
   await app.register(rateLimit, { global: false });
+  // teto geral para escritas (a posição do GPS fica de fora: chega a cada poucos segundos por motorista)
+  const writeLimit = app.rateLimit({ max: config.WRITE_RATE_MAX, timeWindow: '1 minute' });
+  app.addHook('onRequest', async (req, reply) => {
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || req.url.split('?')[0].endsWith('/locations')) return;
+    await writeLimit.call(app, req, reply);
+  });
   await app.register(websocket);
 
   const guard: Ctx['guard'] = (roles) => async (req, reply) => {
@@ -76,6 +95,19 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     events.publish({ type: 'changed', companyId, scope, at: new Date().toISOString() });
     return out.result ?? { ok: true };
   };
+
+  // erro inesperado: o detalhe fica no log (com o reqId); o cliente recebe só uma mensagem genérica
+  app.setErrorHandler((err: Error & { statusCode?: number; validation?: unknown }, req, reply) => {
+    const status = err.statusCode && err.statusCode >= 400 && err.statusCode < 500 ? err.statusCode : 500;
+    if (status >= 500) {
+      req.log.error({ err }, 'erro interno');
+      return reply.code(500).send({ error: 'Erro interno. Tente de novo; se continuar, informe o código ' + req.id + ' ao suporte.' });
+    }
+    return reply.code(status).send({ error: status === 429 ? 'Muitas tentativas. Aguarde um pouco e tente de novo.' : err.message });
+  });
+
+  // o mesmo id aparece nos logs da requisição: suporte e usuário conseguem apontar a linha exata do log
+  app.addHook('onSend', async (req, reply) => { reply.header('x-request-id', req.id); });
 
   /** Processo vivo. */
   app.get('/health', async () => ({ status: 'ok' }));
@@ -132,5 +164,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerOperationRoutes(ctx);
   registerTrackingRoutes(ctx);
   registerPlatformRoutes(ctx);
+  registerPublicTrackingRoutes(ctx);
+  const llm = deps.llm !== undefined ? deps.llm : config.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY, timeout: 60_000, maxRetries: 2 }) : null;
+  registerAgentRoutes(ctx, llm);
   return app;
 }

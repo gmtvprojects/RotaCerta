@@ -134,7 +134,7 @@ export function registerPlatformRoutes({ app, db, guard }: Ctx) {
     const [current] = await db.select().from(schema.users).where(eq(schema.users.id, id));
     if (!current || current.role === 'plataforma') return reply.code(404).send({ error: 'Usuário não encontrado.' });
     const password = temporaryPassword();
-    await db.update(schema.users).set({ passwordHash: await hashPassword(password), mustChangePassword: true }).where(eq(schema.users.id, id));
+    await db.update(schema.users).set({ passwordHash: await hashPassword(password), mustChangePassword: true, failedLogins: 0, lockedUntil: null }).where(eq(schema.users.id, id));
     await revokeAll(db, id);
     await log(req, current.companyId, 'platform.user.password_reset', String(id), { email: current.email });
     // nunca vai para o log: a senha só existe nesta resposta

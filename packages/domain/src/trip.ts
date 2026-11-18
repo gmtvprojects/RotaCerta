@@ -38,7 +38,7 @@ function queueNotice(d: Dataset, r: Route, event: Notification['event'], time: s
   const skipped = !target.consent;
   const n: Notification = {
     id: `n${Date.now().toString(36)}-${target.id}`, key, routeId: r.id, orderId: target.id, name: target.name, phone: target.phone,
-    status: skipped ? 'skipped' : 'delivered', event, created: time, message: noticeMessage(target.name),
+    status: skipped ? 'skipped' : 'queued', event, created: time, message: noticeMessage(target.name),
     reason: skipped ? 'Cliente sem autorização para mensagem.' : '',
   };
   return { ...d, notifications: [n, ...d.notifications] };

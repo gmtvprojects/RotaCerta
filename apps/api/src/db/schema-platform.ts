@@ -26,6 +26,9 @@ export const users = pgTable('users', {
   active: boolean('active').notNull().default(true),
   /** Verdadeiro depois de uma redefinição feita por outra pessoa: a pessoa precisa trocar a senha ao entrar. */
   mustChangePassword: boolean('must_change_password').notNull().default(false),
+  /** Falhas de login seguidas; zera ao entrar. Ao passar do limite a conta fica bloqueada até `lockedUntil`. */
+  failedLogins: integer('failed_logins').notNull().default(0),
+  lockedUntil: timestamp('locked_until', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex('users_email_idx').on(t.email), index('users_company_idx').on(t.companyId)]);
 

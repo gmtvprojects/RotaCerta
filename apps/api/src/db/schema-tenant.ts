@@ -139,3 +139,37 @@ export const driverLocations = pgTable('driver_locations', {
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex('driver_locations_route_time_idx').on(t.routeId, t.recordedAt), index('driver_locations_time_idx').on(t.recordedAt)]);
+
+/**
+ * Agentes de IA criados pela gestão. Cada um é só configuração: instruções, ferramentas liberadas (todas de leitura),
+ * base de conhecimento e quais perfis podem usá-lo. O loop do agente roda na API (src/agents).
+ */
+export const agents = pgTable('agents', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  instructions: text('instructions').notNull(),
+  model: text('model').notNull(),
+  effort: text('effort').notNull().default('medium'),
+  tools: jsonb('tools').$type<string[]>().notNull().default([]),
+  roles: jsonb('roles').$type<string[]>().notNull().default([]),
+  knowledge: jsonb('knowledge').$type<Array<{ title: string; text: string }>>().notNull().default([]),
+  active: boolean('active').notNull().default(true),
+  createdBy: text('created_by').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Uso por dia e agente (para a tela mostrar o gasto e para o teto diário). O texto das conversas não é guardado. */
+export const agentUsage = pgTable('agent_usage', {
+  day: text('day').notNull(),
+  agentId: integer('agent_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
+  model: text('model').notNull(),
+  chats: integer('chats').notNull().default(0),
+  calls: integer('calls').notNull().default(0),
+  failures: integer('failures').notNull().default(0),
+  inputTokens: bigint('input_tokens', { mode: 'number' }).notNull().default(0),
+  cacheReadTokens: bigint('cache_read_tokens', { mode: 'number' }).notNull().default(0),
+  cacheWriteTokens: bigint('cache_write_tokens', { mode: 'number' }).notNull().default(0),
+  outputTokens: bigint('output_tokens', { mode: 'number' }).notNull().default(0),
+}, (t) => [uniqueIndex('agent_usage_day_agent_model_idx').on(t.day, t.agentId, t.model)]);

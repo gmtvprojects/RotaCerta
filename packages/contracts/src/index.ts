@@ -142,3 +142,28 @@ export const wsTicketResponse = z.object({ ticket: z.string().min(1) });
 export type SessionUser = z.infer<typeof sessionUserResponse>;
 export type Session = z.infer<typeof sessionResponse>;
 export type Snapshot = { data: Dataset; papers: PaperForm[] };
+
+/* ---------- Agentes de IA ---------- */
+/** Modelos que a tela oferece. O padrão é o mais capaz; os outros trocam qualidade por custo e velocidade. */
+export const AGENT_MODELS = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'] as const;
+export const AGENT_EFFORTS = ['low', 'medium', 'high'] as const;
+const agentRole = z.enum(['gestao', 'atendente', 'expedicao']);
+
+export const agentKnowledge = z.object({ title: z.string().trim().min(1).max(120), text: z.string().trim().min(1).max(4000) });
+export const agentInput = z.object({
+  name: z.string().trim().min(2, 'Dê um nome ao agente.').max(60),
+  description: z.string().trim().max(240).default(''),
+  instructions: z.string().trim().min(10, 'Escreva as instruções do agente (ao menos uma frase).').max(6000),
+  model: z.enum(AGENT_MODELS).default('claude-opus-5-5'),
+  effort: z.enum(AGENT_EFFORTS).default('medium'),
+  tools: z.array(z.string().max(60)).max(20).default([]),
+  roles: z.array(agentRole).min(1, 'Escolha ao menos um perfil que pode usar o agente.').max(3),
+  knowledge: z.array(agentKnowledge).max(30).default([]),
+  active: z.boolean().default(true),
+});
+export const agentPatch = agentInput.partial();
+export const agentChat = z.object({
+  messages: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().trim().min(1).max(4000) })).min(1).max(30)
+    .refine((m) => m[m.length - 1].role === 'user', 'A última mensagem precisa ser do usuário.'),
+});
+export type AgentInput = z.infer<typeof agentInput>;

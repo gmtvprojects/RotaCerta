@@ -23,6 +23,20 @@ const schema = z.object({
   LOGIN_RATE_MAX: z.coerce.number().int().min(1).default(10),
   /** Dias de histórico de posições dos motoristas (dado pessoal: guardar só o necessário). */
   LOCATION_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  /** Chave da API da Anthropic (Claude). Sem ela, a aba de agentes funciona para configurar, mas não conversa. */
+  ANTHROPIC_API_KEY: z.string().min(10).optional(),
+  /** Teto de conversas com agentes por empresa e por dia (controle de gasto). */
+  AGENT_DAILY_LIMIT: z.coerce.number().int().min(1).default(300),
+  /** Redis para o tempo real entre várias instâncias da API. Sem ele, o barramento é em memória (uma instância). */
+  REDIS_URL: z.string().optional(),
+  /** Confia nos cabeçalhos X-Forwarded-* (API atrás de proxy/balanceador). Padrão: ligado em produção. Sem isso o IP real não chega ao limite de login nem à auditoria. */
+  TRUST_PROXY: z.enum(['true', 'false']).optional(),
+  /** Requisições de escrita por minuto e por IP (além do limite próprio do login). */
+  WRITE_RATE_MAX: z.coerce.number().int().min(1).default(300),
+  /** Falhas de login seguidas, por conta, antes do bloqueio temporário. */
+  LOGIN_LOCK_FAILURES: z.coerce.number().int().min(3).default(8),
+  /** Minutos de bloqueio da conta após as falhas seguidas. */
+  LOGIN_LOCK_MINUTES: z.coerce.number().int().min(1).default(15),
   /** Cookie só por HTTPS. Padrão: ligado em produção. */
   COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   /** Origens permitidas no CORS, separadas por vírgula. */

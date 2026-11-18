@@ -1,9 +1,12 @@
 import type { FastifyInstance } from 'fastify';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import * as schema from '../src/db/schema';
 import { closeTestDbs, createTestApp, loginAs, PASSWORD } from './helpers';
 
 let app: FastifyInstance;
-beforeAll(async () => { ({ app } = await createTestApp()); });
+let db: Awaited<ReturnType<typeof createTestApp>>['db'];
+beforeAll(async () => { ({ app, db } = await createTestApp()); });
 afterAll(closeTestDbs);
 
 type Headers = Record<string, string>;
@@ -24,6 +27,23 @@ describe('autenticação e perfis', () => {
     const ok = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'gestao@rotacerta.local', password: PASSWORD } });
     expect(ok.statusCode).toBe(200);
     expect(ok.json().user.role).toBe('gestao');
+  });
+
+  it('bloqueia a conta após falhas seguidas, mesmo com a senha certa', async () => {
+    const login = (password: string) => app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'expedicao@rotacerta.local', password } });
+    for (let i = 0; i < 8; i++) expect((await login('errada')).statusCode).toBe(401);
+    const locked = await login(PASSWORD);
+    expect(locked.statusCode).toBe(401);
+    expect(locked.json().error).toBe('E-mail ou senha incorretos.');
+    // libera a conta para os demais testes, que usam o mesmo usuário
+    await db.update(schema.users).set({ failedLogins: 0, lockedUntil: null }).where(eq(schema.users.email, 'expedicao@rotacerta.local'));
+    expect((await login(PASSWORD)).statusCode).toBe(200);
+  });
+
+  it('envia cabeçalhos de segurança', async () => {
+    const res = await app.inject({ method: 'GET', url: '/health' });
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['content-security-policy']).toContain("default-src 'none'");
   });
 
   it('exige token e respeita o perfil', async () => {
@@ -127,5 +147,19 @@ describe('fichas de papel', () => {
     expect((await call('POST', `/api/papers/${id}/import`, atendente, values)).statusCode).toBe(200);
     expect((await call('POST', `/api/papers/${id}/import`, atendente, values)).statusCode).toBe(422);
     expect((await call('DELETE', `/api/papers/${id}`, atendente)).statusCode).toBe(422);
+  });
+});
+
+describe('despacho de avisos', () => {
+  it('envia os avisos da fila e marca como entregues', async () => {
+    const { dispatchQueued } = await import('../src/notifications/dispatcher');
+    const { SimulatedSender } = await import('../src/notifications/sender');
+    const { EventBus } = await import('../src/realtime/events');
+    const { mutate } = await import('../src/db/unit-of-work');
+    await mutate(db, 1, (w) => ({ ok: true, result: null, workspace: { ...w, data: { ...w.data, notifications: [{ id: 'q1', routeId: 1, orderId: 1, name: 'Fila', phone: '000', status: 'queued', event: 'rota_iniciada', created: '', message: 'oi', reason: '' }, ...w.data.notifications] } } }));
+    const sent = await dispatchQueued(db, new SimulatedSender(), new EventBus(), { info() {}, error() {} });
+    expect(sent).toBeGreaterThanOrEqual(1);
+    const ds = (await call('GET', '/api/dataset', await loginAs(app, 'gestao'))).json().data;
+    expect(ds.notifications.find((n: { id: string }) => n.id === 'q1').status).toBe('delivered');
   });
 });
