@@ -6,7 +6,8 @@ import {
 } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { LocationSharing } from '../app/location';
-import { Empty, Header, HoldButton, Modal, RoutePill } from './ui';
+import { Header, HoldButton, Modal, RoutePill } from './ui';
+import { Icon } from '../app/icons';
 
 export function Motorista() {
   return (
@@ -31,17 +32,19 @@ function AsDriver() {
   );
 }
 
-function ManifestCard({ r, action }: { r: RouteT; action: string }) {
+function ManifestRow({ r }: { r: RouteT }) {
   const { data } = useStore();
   const os = routeOrders(data, r);
   const vehicle = data.vehicles.find((v) => v.id === r.vehicleId);
   const vols = os.reduce((n, o) => n + volumesOf(o).length, 0);
   return (
-    <section className="card">
-      <div className="card-head"><h2>Romaneio #{r.id}</h2><RoutePill status={r.status} /></div>
-      <div className="trip-meta"><span>{vehicle?.name}</span><span>Saída {r.departure}</span><span>{os.length} paradas</span><span>{vols} volumes</span></div>
-      <Link className="btn primary" to={r.status === 'active' ? 'viagem' : `romaneio/${r.id}`}>{action}</Link>
-    </section>
+    <li>
+      <Link className="rt-row" to={`romaneio/${r.id}`}>
+        <span className="rt-dot blue" aria-hidden="true"><Icon name="truck" size={18} /></span>
+        <span className="rt-name"><b>Romaneio #{r.id}</b><small>{vehicle?.name} · saída {r.departure} · {os.length} paradas · {vols} volumes</small></span>
+        <RoutePill status={r.status} />
+      </Link>
+    </li>
   );
 }
 
@@ -50,17 +53,45 @@ function Escolha() {
   const driver = data.drivers.find((d) => d.id === driverId);
   const mine = activeRoute(data, driverId);
   const available = availableManifests(data, driverId).filter((r) => r.id !== mine?.id);
+  const stops = mine ? routeOrders(data, mine) : [];
+  const done = stops.filter((o) => o.status === 'delivered' || o.status === 'failed').length;
+  const next = mine ? nextStop(data, mine) : undefined;
+  const date = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
+  const finished = data.routes.filter((r) => r.driverId === driverId && r.status === 'finished').length;
   return (
     <div className="trip">
-      <Header title="Escolha seu romaneio." subtitle={`Olá, ${driver?.name.split(' ')[0] ?? 'motorista'}. ${mine ? 'Sua viagem está em andamento.' : 'Qual viagem vamos fazer agora?'}`} />
+      <header className="page-head"><div><span className="eyebrow">{date}</span><h1>Olá, {driver?.name.split(' ')[0] ?? 'motorista'}</h1></div></header>
       {role === 'gestao' && <AsDriver />}
-      {mine && <ManifestCard r={mine} action="Continuar viagem" />}
-      {available.length > 0 && <>
-        {mine && <h3 className="muted">Disponíveis após sua viagem atual</h3>}
-        {available.map((r) => <ManifestCard key={r.id} r={r} action="Ver romaneio" />)}
-      </>}
-      {!mine && available.length === 0 && (
-        <section className="card"><Empty>Nenhum romaneio disponível agora. As cargas aparecem aqui assim que a expedição termina a conferência.</Empty></section>
+
+      {mine ? (
+        <section className="rt-hero">
+          <span className="rt-badge"><Icon name="truck" size={16} /> Viagem em andamento</span>
+          <div>
+            <strong>{next ? `Próxima: ${next.name}` : 'Todas as paradas registradas'}</strong>
+            <span>Romaneio #{mine.id} · parada {Math.min(done + 1, stops.length)} de {stops.length}{next ? ` · ${next.neighborhood}` : ''}</span>
+          </div>
+          <div className="rt-hero-bar" aria-hidden="true"><i style={{ width: `${stops.length ? (done / stops.length) * 100 : 0}%` }} /></div>
+          <Link className="btn rt-hero-btn rt-hero-wide" to="viagem">Continuar viagem</Link>
+        </section>
+      ) : (
+        <section className="rt-hero rt-hero-calm">
+          <span className="rt-badge">{available.length ? `${available.length} romaneio(s) disponível(is)` : 'Sem viagem agora'}</span>
+          <div><strong>{available.length ? 'Escolha a próxima viagem' : 'Nenhum romaneio liberado'}</strong>
+            <span>{available.length ? 'Confira as paradas antes de iniciar.' : 'As cargas aparecem aqui assim que a expedição termina a conferência.'}</span></div>
+        </section>
+      )}
+
+      <div className="rt-stats rt-stats-3">
+        <div className="rt-stat"><b>{stops.length}</b><span>Paradas hoje</span></div>
+        <div className="rt-stat"><b className="green">{done}</b><span>Encerradas</span></div>
+        <div className="rt-stat"><b>{finished}</b><span>Viagens feitas</span></div>
+      </div>
+
+      {available.length > 0 && (
+        <section className="card rt-panel">
+          <div className="rt-panel-head"><h2>{mine ? 'Disponíveis depois' : 'Romaneios disponíveis'}</h2></div>
+          <ul className="rt-rows">{available.map((r) => <ManifestRow key={r.id} r={r} />)}</ul>
+        </section>
       )}
       <p className="muted small">Somente cargas conferidas aparecem para escolha. Uma viagem já iniciada por outro motorista não fica disponível.</p>
     </div>
@@ -192,7 +223,7 @@ function Viagem() {
 
 function MapDialog({ o, onClose }: { o: Order; onClose: () => void }) {
   return (
-    <Modal title="Endereço da próxima parada" onClose={onClose} footer={<button type="button" className="primary" onClick={onClose}>Fechar</button>}>
+    <Modal title="Endereço da próxima parada" icon="map" onClose={onClose} footer={<button type="button" className="primary" onClick={onClose}>Fechar</button>}>
       <span className="pill amber">Endereço fictício</span>
       <strong>{o.name}</strong>
       <p>{o.street}, {o.number}<br />{o.neighborhood}{o.complement && <><br />{o.complement}</>}</p>
@@ -207,7 +238,7 @@ function ContactDialog({ o, onClose }: { o: Order; onClose: () => void }) {
   const digits = phone.replace(/\D/g, '');
   const valid = digits.length === 10 || digits.length === 11;
   return (
-    <Modal title="Falar com o cliente" onClose={onClose} footer={<>
+    <Modal title="Falar com o cliente" icon="phone" onClose={onClose} footer={<>
       <button type="button" onClick={onClose}>Voltar</button>
       {valid
         ? <a className="btn primary" href={`https://wa.me/55${digits}`} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Abrir conversa de teste</a>
@@ -227,7 +258,7 @@ function ContactDialog({ o, onClose }: { o: Order; onClose: () => void }) {
 function DeliverDialog({ o, onClose, onSubmit }: { o: Order; onClose: () => void; onSubmit: (receiver: string) => void }) {
   const [receiver, setReceiver] = useState('');
   return (
-    <Modal title="Concluir entrega" onClose={onClose} footer={<>
+    <Modal title="Concluir entrega" icon="check" tone="success" onClose={onClose} footer={<>
       <button type="button" onClick={onClose}>Cancelar</button>
       <HoldButton label="Segure para confirmar" doneLabel="Entrega confirmada" onConfirm={() => onSubmit(receiver)} />
     </>}>
@@ -244,7 +275,7 @@ function OccurrenceDialog({ o, onClose, onSubmit }: { o: Order; onClose: () => v
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   return (
-    <Modal title="Registrar ocorrência" onClose={onClose} footer={<>
+    <Modal title="Registrar ocorrência" icon="alert" tone="danger" onClose={onClose} footer={<>
       <button type="button" onClick={onClose}>Cancelar</button>
       <button type="button" className="danger" onClick={() => (reason ? onSubmit(reason, notes) : setError('Selecione o motivo.'))}>Registrar ocorrência</button>
     </>}>

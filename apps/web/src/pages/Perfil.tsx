@@ -31,18 +31,22 @@ export function Perfil() {
 
   return (
     <>
-      <Header title="Perfil." subtitle="Quem está usando o sistema e o que cada perfil enxerga." />
-      <section className="card">
-        <div className="card-head">
+      <Header title="Perfil" subtitle="Quem está usando o sistema e o que cada perfil enxerga." />
+      <div className="rt-split">
+        <section className="card rt-profile rt-side" aria-label="Meu perfil">
           <div className="avatar">{person.split(' ').map((s) => s[0]).slice(0, 2).join('')}</div>
-          <div><h2>{person}</h2><span className="muted">{ROLE_LABELS[role]} · {ROLE_DESCRIPTIONS[role]}</span></div>
+          <h2>{person}</h2>
+          <span className="role-tag">{ROLE_LABELS[role]}</span>
+          <p className="muted small">{ROLE_DESCRIPTIONS[role]}</p>
+          <div className="rt-profile-stats"><div><b>{areas.length}</b><span>Áreas liberadas</span></div></div>
           <button type="button" onClick={logout}>Trocar perfil</button>
-        </div>
-        <small className="muted">Áreas liberadas</small>
-        <div className="chips" style={{ marginTop: 6 }}>{areas.map((a) => <span className="pill blue" key={a}>{a}</span>)}</div>
-        <p className="muted small">Seu acesso é definido pelo perfil do seu usuário.</p>
-      </section>
-
+        </section>
+        <div className="rt-main rt-stack">
+          <section className="card">
+            <h2>Áreas liberadas</h2>
+            <div className="chips" style={{ marginTop: 10 }}>{areas.map((a) => <span className="pill blue" key={a}>{a}</span>)}</div>
+            <p className="muted small">Seu acesso é definido pelo perfil do seu usuário.</p>
+          </section>
       <section className="card">
         <div className="card-head"><h2>Alterar minha senha</h2></div>
         <form onSubmit={async (e) => { e.preventDefault(); const err = await changePassword(current, next); setPwMsg(err ? { ok: false, text: err } : { ok: true, text: 'Senha alterada. Suas outras sessões foram encerradas.' }); if (!err) { setCurrent(''); setNext(''); } }}>
@@ -65,7 +69,9 @@ export function Perfil() {
         ))}
       </section>
 
-      <InstallCard />
+          <InstallCard />
+        </div>
+      </div>
     </>
   );
 }

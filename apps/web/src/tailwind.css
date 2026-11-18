@@ -1,0 +1,37 @@
+/*
+ * Tailwind v4 sem o "preflight" (o reset): o styles.css atual continua mandando no visual.
+ * Ordem das camadas: o CSS antigo entra em `components`, então qualquer utilitário do Tailwind
+ * (ex.: `grid p-4`) ganha dele sem precisar de !important. As telas migram aos poucos.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "./styles.css" layer(components);
+@import "./theme-rota.css" layer(components); /* estilo "Rota" no app inteiro (menos o login) */
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/*
+ * Tokens: apontam para as variáveis de styles.css (que já trocam no modo escuro), então
+ * `bg-brand`, `text-ink`, `border-line`, `rounded-card`, `shadow-card` seguem o tema.
+ * Para trocar de estilo (vidro, neon, editorial, bento) basta redefinir as variáveis por tema.
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-sunk: var(--sunk);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-deep: var(--deep);
+  --color-deep-2: var(--deep-2);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--red);
+  --font-display: var(--display);
+  --font-body: var(--body);
+  --font-mono: var(--mono);
+  --shadow-card: var(--shadow);
+  --radius-card: 18px;
+  --radius-modal: 20px;
+}

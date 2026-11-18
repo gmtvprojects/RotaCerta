@@ -78,15 +78,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand); out
 .topbar .avatar { width: 34px; height: 34px; font-size: 12px; }
 .main { padding: 28px max(20px, env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); max-width: 1100px; width: 100%; margin: 0 auto; }
 
-.dock { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 35; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 22px; background: linear-gradient(135deg, var(--deep), var(--deep-2)); box-shadow: var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, .08); max-width: calc(100% - 24px); }
-.dock a, .dock button { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 15px; border: 0; border-radius: 16px; background: none; color: var(--on-deep); font-size: 14px; font-weight: 500; text-decoration: none; white-space: nowrap; }
+.dock { position: fixed; left: 0; right: 0; width: fit-content; margin-inline: auto; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 35; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 22px; background: linear-gradient(135deg, var(--deep), var(--deep-2)); box-shadow: var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, .08); max-width: calc(100% - 24px); }
+.dock a, .dock button { position: relative; isolation: isolate; display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 15px; border: 0; border-radius: 16px; background: none; color: var(--on-deep); font-size: 14px; font-weight: 500; text-decoration: none; white-space: nowrap; }
 .dock a:hover, .dock button:hover { color: #fff; }
-.dock .active { background: rgba(255, 255, 255, .14); color: #fff; }
+.dock .active { color: #fff; }
+.dock-pill { position: absolute; inset: 0; z-index: -1; border-radius: 16px; background: rgba(255, 255, 255, .16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
 .dock .dock-act { background: var(--accent); color: var(--accent-ink); font-weight: 600; margin: 0 4px; }
 .dock .dock-act:hover { color: var(--accent-ink); filter: brightness(1.06); }
 .dock kbd { font-size: 11px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 6px; padding: 1px 6px; }
 @media (max-width: 720px) {
-  .dock { left: 12px; right: 12px; transform: none; justify-content: space-between; max-width: none; }
+  .dock { left: 12px; right: 12px; width: auto; margin-inline: 0; justify-content: space-between; max-width: none; }
   .dock a, .dock button { flex: 1; min-width: 0; flex-direction: column; gap: 3px; padding: 7px 2px; min-height: 52px; font-size: 10.5px; }
   .dock .dock-act { flex: 1.25; margin: 0 2px; }
   .dock span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }

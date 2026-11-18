@@ -30,7 +30,7 @@ export function Configuracoes() {
 
   return (
     <>
-      <Header title="A operação do seu jeito." subtitle="Bairros, equipe e regras simples para começar." />
+      <Header title="Configurações" subtitle="Bairros, equipe e regras simples para começar." />
       {problem && <div className="banner" role="alert">{problem} <button type="button" onClick={() => setProblem('')}>Fechar</button></div>}
       {hood && <HoodDialog name={hood} onClose={() => setHood(null)} />}
       <div className="chips">{TABS.map((t) => <button key={t} type="button" className={tab === t ? 'chip on' : 'chip'} onClick={() => setTab(t)}>{t}</button>)}</div>

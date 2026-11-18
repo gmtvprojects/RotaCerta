@@ -72,7 +72,7 @@ export function FichaInicio() {
 
   return (
     <>
-      <Header title="Do papel para a mesma operação." subtitle="Fotografe a ficha, revise e crie a entrega."
+      <Header title="Ficha de papel" subtitle="Fotografe a ficha, revise e crie a entrega."
         actions={<Link className="btn" to="/atendimento/modelo">Ficha padrão para imprimir</Link>} />
       <div className="steps-intro">
         {[['1', 'Preencha a ficha', 'Use o modelo padrão da loja.'], ['2', 'Fotografe', 'Inclua todos os campos na foto.'], ['3', 'Revise e confirme', 'Depois, siga para os volumes.']].map(([n, t, d]) => (
@@ -260,7 +260,7 @@ export function FichaModelo() {
   const [number, setNumber] = useState(() => nextNumber(papers));
   return (
     <>
-      <Header title="Uma ficha menor. O mesmo controle." subtitle="Formato de meia folha A4, para preencher à mão. Imprima uma via por compra."
+      <Header title="Modelo da ficha" subtitle="Formato de meia folha A4, para preencher à mão. Imprima uma via por compra."
         actions={<>
           <button type="button" onClick={() => setNumber(nextNumber([...papers, { sheetNumber: number } as PaperForm]))}>Nova ficha numerada</button>
           <button type="button" className="primary" onClick={() => window.print()}>Imprimir</button>

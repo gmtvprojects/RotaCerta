@@ -70,7 +70,7 @@ export function ReasonDialog({ title, confirm, hint, danger, onClose, onSubmit }
     if (ok) onClose(); else setError('Não foi possível concluir. Veja a mensagem na tela.');
   };
   return (
-    <Modal title={title} onClose={onClose} footer={<>
+    <Modal title={title} onClose={onClose} icon={danger ? 'alert' : undefined} tone={danger ? 'danger' : 'info'} footer={<>
       <button type="button" onClick={onClose}>Voltar</button>
       <button type="button" className={danger ? 'danger' : 'primary'} disabled={busy} onClick={() => void submit()}>{confirm}</button>
     </>}>
@@ -86,7 +86,7 @@ function RequeueDialog({ order: o, onClose, onSubmit }: { order: Order; onClose:
   const [notes, setNotes] = useState(o.notes);
   const [busy, setBusy] = useState(false);
   return (
-    <Modal title={`Nova tentativa · entrega #${o.id}`} onClose={onClose} footer={<>
+    <Modal title={`Nova tentativa · entrega #${o.id}`} icon="clock" onClose={onClose} footer={<>
       <button type="button" onClick={onClose}>Voltar</button>
       <button type="button" className="primary" disabled={busy} onClick={async () => { setBusy(true); const ok = await onSubmit({ window, notes }); setBusy(false); if (ok) onClose(); }}>Colocar na fila</button>
     </>}>

@@ -1,19 +1,25 @@
 import { useMemo, useState } from 'react';
-import { ORDER_STATUS_LABELS, type OrderStatus } from '@rotacerta/domain';
+import { ORDER_STATUS_LABELS, type Order, type OrderStatus } from '@rotacerta/domain';
 import { useStore } from '../app/store';
+import { Icon } from '../app/icons';
+import { Item, Stagger } from '../app/motion';
 import { OrderDetail } from './OrderDetail';
 import { Empty, Header, OrderPill } from './ui';
 
 type Tab = 'all' | 'open' | 'done';
 const TABS: [Tab, string][] = [['all', 'Todas'], ['open', 'Em operação'], ['done', 'Encerradas']];
 const isDone = (s: OrderStatus) => s === 'delivered' || s === 'failed' || s === 'cancelled';
+const narrow = () => window.matchMedia('(max-width: 900px)').matches;
 
+/** Consulta de entregas (layout do Rota): busca + filtros, abas em pílula, lista à esquerda e detalhe à direita. */
 export function Entregas() {
   const { data } = useStore();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<OrderStatus | ''>('');
   const [tab, setTab] = useState<Tab>('all');
   const [hood, setHood] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selId, setSelId] = useState<number | null>(null);
   const [openId, setOpenId] = useState<number | null>(null);
 
   const rows = useMemo(() => {
@@ -26,10 +32,32 @@ export function Entregas() {
 
   const filtered = !!(query || status || hood);
   const clear = () => { setQuery(''); setStatus(''); setHood(''); };
+  const selected: Order | undefined = rows.find((o) => o.id === selId) ?? rows[0];
+  const pick = (o: Order) => (narrow() ? setOpenId(o.id) : setSelId(o.id));
 
   return (
     <>
-      <Header title="Consultar entregas." subtitle="Encontre uma compra pelo cliente ou pelo código." />
+      <Header title="Entregas" subtitle="Encontre uma compra pelo cliente ou pelo código." actions={<>
+        <label className="rt-search"><Icon name="search" size={18} />
+          <input type="search" aria-label="Buscar por código, cliente ou caixa" placeholder="Código ou cliente" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </label>
+        <button type="button" aria-expanded={showFilters} onClick={() => setShowFilters((v) => !v)}><Icon name="list" size={18} />Filtros{status || hood ? ' •' : ''}</button>
+      </>} />
+
+      {showFilters && (
+        <div className="rt-filters">
+          <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as OrderStatus | '')}>
+            <option value="">Todos os status</option>
+            {(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[]).map((s) => <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>)}
+          </select>
+          <select aria-label="Bairro" value={hood} onChange={(e) => setHood(e.target.value)}>
+            <option value="">Todos os bairros</option>
+            {data.neighborhoods.map((n) => <option key={n.name}>{n.name}</option>)}
+          </select>
+          {filtered && <button type="button" onClick={clear}>Limpar filtros</button>}
+        </div>
+      )}
+
       <div className="chips">
         {TABS.map(([k, label]) => (
           <button key={k} type="button" className={tab === k ? 'chip on' : 'chip'} onClick={() => setTab(k)}>
@@ -37,52 +65,40 @@ export function Entregas() {
           </button>
         ))}
       </div>
-      <section className="card">
-        <div className="filters">
-          <input placeholder="Cliente, código ou caixa" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <select value={status} onChange={(e) => setStatus(e.target.value as OrderStatus | '')}>
-            <option value="">Todos os status</option>
-            {(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[]).map((s) => <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>)}
-          </select>
-          <select value={hood} onChange={(e) => setHood(e.target.value)}>
-            <option value="">Todos os bairros</option>
-            {data.neighborhoods.map((n) => <option key={n.name}>{n.name}</option>)}
-          </select>
-          {filtered && <button type="button" onClick={clear}>Limpar filtros</button>}
+
+      {rows.length === 0 ? <Empty>Nenhuma entrega encontrada. Tente outro nome ou remova os filtros.</Empty> : (
+        <div className="rt-split">
+          <Stagger as="ul" className="rt-list rt-main" key={`l-${tab}|${status}|${hood}`} count={rows.length}>
+            {rows.map((o) => (
+              <Item as="li" key={o.id}>
+                <button type="button" className={`rt-item ${selected?.id === o.id ? 'on' : ''}`} aria-current={selected?.id === o.id} onClick={() => pick(o)}>
+                  <span className="rt-name"><b>{o.name}</b><small>#{o.id} · {o.street}, {o.number} · {o.neighborhood}</small></span>
+                  <span className="rt-when">{o.window}</span>
+                  <OrderPill status={o.status} />
+                </button>
+              </Item>
+            ))}
+          </Stagger>
+
+          {selected && (
+            <aside className="card rt-aside rt-side" aria-label="Detalhe da entrega">
+              <div className="rt-aside-head">
+                <div><h2>{selected.name}</h2><span className="muted">#{selected.id} · {selected.phone}</span></div>
+                <OrderPill status={selected.status} />
+              </div>
+              <div className="rt-kv"><span>Janela de entrega</span><b>{selected.window}</b></div>
+              <div className="rt-kv"><span>Endereço</span><b>{selected.street}, {selected.number} — {selected.neighborhood}</b></div>
+              <div className="rt-kv"><span>Volumes</span><b>{selected.boxes.length ? `${selected.boxes.length} caixa(s)` : 'sem caixas'}</b></div>
+              <ol className="rt-timeline" aria-label="Histórico">
+                {selected.history.slice().reverse().slice(0, 4).map((h, i) => (
+                  <li key={i} className={i === 0 ? 'now' : ''}><span /><div><b>{h.label}</b><small>{h.time} · {h.actor}</small></div></li>
+                ))}
+              </ol>
+              <div className="rt-aside-actions"><button type="button" className="primary" onClick={() => setOpenId(selected.id)}>Ver detalhes</button></div>
+            </aside>
+          )}
         </div>
-        <p className="muted small">{rows.length} entrega(s)</p>
-        {rows.length === 0 ? <Empty>Nenhuma entrega encontrada. Tente outro nome ou remova os filtros.</Empty> : (
-          <>
-            <div className="table-wrap has-cards">
-              <table>
-                <thead><tr><th>Código</th><th>Cliente</th><th>Endereço</th><th>Janela</th><th>Caixas</th><th>Status</th><th /></tr></thead>
-                <tbody>
-                  {rows.map((o) => (
-                    <tr key={o.id}>
-                      <td>#{o.id}</td><td>{o.name}<div className="muted small">{o.phone}</div></td>
-                      <td>{o.street}, {o.number} · {o.neighborhood}</td><td className="nowrap">{o.window}</td>
-                      <td>{o.boxes.length || '—'}</td><td><OrderPill status={o.status} /></td>
-                      <td><button type="button" onClick={() => setOpenId(o.id)}>Detalhes</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <ul className="m-list">
-              {rows.map((o) => (
-                <li key={o.id}>
-                  <button type="button" className="m-row" onClick={() => setOpenId(o.id)} aria-label={`Detalhes da entrega #${o.id}, ${o.name}`}>
-                    <span className="m-title"><span className="m-code">#{o.id}</span>{o.name}</span>
-                    <span className="m-end"><OrderPill status={o.status} /></span>
-                    <span className="m-sub">{o.street}, {o.number} · {o.neighborhood}</span>
-                    <span className="m-sub"><span className="nowrap">{o.window}</span> · {o.boxes.length ? `${o.boxes.length} caixa(s)` : 'sem caixas'}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
+      )}
       {openId != null && <OrderDetail orderId={openId} onClose={() => setOpenId(null)} />}
     </>
   );

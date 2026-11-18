@@ -6,6 +6,8 @@ import { Palette, type PaletteItem } from './Palette';
 import { useStore } from './store';
 import { TourBar, useTour } from './tour';
 import { Login } from '../pages/Login';
+import { PageEnter, SNAPPY } from './motion';
+import { motion } from 'motion/react';
 
 const Dashboard = lazy(() => import('../pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const Entregas = lazy(() => import('../pages/Entregas').then((m) => ({ default: m.Entregas })));
@@ -28,27 +30,27 @@ const OrderDetail = lazy(() => import('../pages/OrderDetail').then((m) => ({ def
 
 const loading = <div className="login"><section className="login-card"><Logo sub="Gestão de entregas" /><p className="muted">Carregando…</p></section></div>;
 const deferred = (content: ReactNode) => <Suspense fallback={loading}>{content}</Suspense>;
+const page = (content: ReactNode) => <Suspense fallback={loading}><PageEnter>{content}</PageEnter></Suspense>;
 
-const AmbientRoutes = lazy(() => import('./AmbientRoutes').then(m => ({ default: m.AmbientRoutes })));
 
 interface PageDef { page: Page; path: string; label: string; element: JSX.Element; hidden?: boolean }
 
 const PAGES: PageDef[] = [
-  { page: 'dashboard', path: '/gestao', label: 'Painel de gestão', element: deferred(<Dashboard />) },
-  { page: 'atendimento', path: '/atendimento', label: 'Atendimento', element: deferred(<Atendimento />) },
-  { page: 'pendencias', path: '/pendencias', label: 'Continuar atendimento', element: deferred(<Pendencias />) },
-  { page: 'entregas', path: '/entregas', label: 'Entregas', element: deferred(<Entregas />) },
-  { page: 'clientes', path: '/clientes', label: 'Clientes', element: deferred(<Clientes />) },
-  { page: 'volumes', path: '/volumes', label: 'Volumes e caixas', element: deferred(<Volumes />) },
-  { page: 'expedicao', path: '/expedicao', label: 'Montar carga', element: deferred(<Expedicao />) },
-  { page: 'planejamento', path: '/planejamento', label: 'Planejamento', element: deferred(<Planejamento />), hidden: true },
-  { page: 'carregamento', path: '/carregamento', label: 'Carregamento', element: deferred(<Carregamento />) },
-  { page: 'romaneio', path: '/romaneios', label: 'Romaneios', element: deferred(<Romaneios />) },
-  { page: 'motorista', path: '/motorista', label: 'Motorista', element: deferred(<Motorista />) },
-  { page: 'acompanhamento', path: '/acompanhamento', label: 'Acompanhar viagens', element: deferred(<Acompanhamento />) },
-  { page: 'notificacoes', path: '/notificacoes', label: 'Notificações', element: deferred(<Notificacoes />) },
-  { page: 'configuracoes', path: '/configuracoes', label: 'Configurações', element: deferred(<Configuracoes />) },
-  { page: 'perfis', path: '/perfil', label: 'Perfil', element: deferred(<Perfil />) },
+  { page: 'dashboard', path: '/gestao', label: 'Painel de gestão', element: page(<Dashboard />) },
+  { page: 'atendimento', path: '/atendimento', label: 'Atendimento', element: page(<Atendimento />) },
+  { page: 'pendencias', path: '/pendencias', label: 'Continuar atendimento', element: page(<Pendencias />) },
+  { page: 'entregas', path: '/entregas', label: 'Entregas', element: page(<Entregas />) },
+  { page: 'clientes', path: '/clientes', label: 'Clientes', element: page(<Clientes />) },
+  { page: 'volumes', path: '/volumes', label: 'Volumes e caixas', element: page(<Volumes />) },
+  { page: 'expedicao', path: '/expedicao', label: 'Montar carga', element: page(<Expedicao />) },
+  { page: 'planejamento', path: '/planejamento', label: 'Planejamento', element: page(<Planejamento />), hidden: true },
+  { page: 'carregamento', path: '/carregamento', label: 'Carregamento', element: page(<Carregamento />) },
+  { page: 'romaneio', path: '/romaneios', label: 'Romaneios', element: page(<Romaneios />) },
+  { page: 'motorista', path: '/motorista', label: 'Motorista', element: page(<Motorista />) },
+  { page: 'acompanhamento', path: '/acompanhamento', label: 'Acompanhar viagens', element: page(<Acompanhamento />) },
+  { page: 'notificacoes', path: '/notificacoes', label: 'Notificações', element: page(<Notificacoes />) },
+  { page: 'configuracoes', path: '/configuracoes', label: 'Configurações', element: page(<Configuracoes />) },
+  { page: 'perfis', path: '/perfil', label: 'Perfil', element: page(<Perfil />) },
 ];
 
 interface DockLink { to: string; label: string; icon: IconName }
@@ -151,12 +153,13 @@ export function App() {
   const dock = DOCK[role];
   const middle = Math.ceil(dock.links.length / 2);
   const dockLink = (l: DockLink) => (
-    <NavLink key={l.to} to={l.to} className={({ isActive }) => (isActive ? 'active' : '')}><Icon name={l.icon} /><span>{l.label}</span></NavLink>
+    <NavLink key={l.to} to={l.to} className={({ isActive }) => (isActive ? 'active' : '')}>
+      {({ isActive }) => <>{isActive && <motion.i layoutId="dock-pill" className="dock-pill" transition={SNAPPY} />}<Icon name={l.icon} /><span>{l.label}</span></>}
+    </NavLink>
   );
 
   return (
     <div className={`shell ${tour.active ? 'with-tour' : ''}`}>
-      <Suspense fallback={null}><AmbientRoutes pageKey={pathname} /></Suspense>
       <header className="topbar">
         <Link to={homePath(role)} className="logo-link" aria-label="RotaCerta, início"><Logo /></Link>
         <span className="grow" />
@@ -174,12 +177,12 @@ export function App() {
         </Routes>
       </main>
       <TourBar />
-      <nav className="dock" aria-label="Navegação principal">
+      <motion.nav className="dock" aria-label="Navegação principal" initial={{ y: 120, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.25 }}>
         {dock.links.slice(0, middle).map(dockLink)}
         <Link to={dock.action.to} className="dock-act"><Icon name={dock.action.icon} /><span>{dock.action.label}</span></Link>
         {dock.links.slice(middle).map(dockLink)}
         <button type="button" onClick={() => setSearching(true)} aria-haspopup="dialog"><Icon name="search" /><span>Buscar</span><kbd>Ctrl K</kbd></button>
-      </nav>
+      </motion.nav>
       {searching && <Palette items={paletteItems} search={searchOrders} onClose={() => setSearching(false)} />}
       {orderId != null && deferred(<OrderDetail orderId={orderId} onClose={() => setOrderId(null)} />)}
     </div>

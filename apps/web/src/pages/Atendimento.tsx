@@ -6,6 +6,7 @@ import {
 } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { Empty, Header, OrderPill } from './ui';
+import { Counter, Item, Stagger } from '../app/motion';
 import { FichaInicio, FichaModelo, FichaRevisao } from './FichaPapel';
 
 export function Atendimento() {
@@ -37,17 +38,35 @@ function Steps({ current }: { current: 1 | 2 | 3 }) {
 }
 
 function Inicio() {
-  const { data, draft } = useStore();
-  const awaiting = data.orders.filter((o) => o.status === 'awaiting').length;
+  const { data, draft, user } = useStore();
+  const awaiting = data.orders.filter((o) => o.status === 'awaiting');
+  const delivered = data.orders.filter((o) => o.status === 'delivered').length;
+  const first = (user?.name ?? '').split(' ')[0];
+  const date = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
   return (
     <>
-      <Header title="Atendimento." subtitle="Escolha o próximo passo." />
+      <header className="page-head"><div><span className="eyebrow">{date}</span><h1>{first ? `Olá, ${first}` : 'Atendimento'}</h1></div></header>
+
+      <div className="rt-split rt-hero-row">
+        <section className="rt-hero rt-main">
+          <span className="rt-badge">{awaiting.length ? 'Aguardando volumes' : 'Tudo em dia'}</span>
+          <div>
+            <strong>{awaiting.length ? `${awaiting.length} compra(s) esperando as caixas` : 'Nenhuma compra esperando caixas'}</strong>
+            <span>{draft ? 'Você também tem 1 rascunho de cadastro.' : 'Cadastre uma nova entrega quando o cliente chegar ao caixa.'}</span>
+          </div>
+          <Link className="btn rt-hero-btn" to={awaiting.length ? '/pendencias' : 'nova'}>{awaiting.length ? 'Continuar atendimento' : 'Nova entrega'}</Link>
+        </section>
+        <Stagger className="rt-stats rt-side">
+          <Item className="rt-stat"><span>Aguardando</span><b><Counter to={awaiting.length} /></b><small>caixas a registrar</small></Item>
+          <Item className="rt-stat"><span>Entregues</span><b className="green"><Counter to={delivered} /></b><small>no total</small></Item>
+          <Item className="rt-stat"><span>Entregas</span><b><Counter to={data.orders.length} /></b><small>cadastradas</small></Item>
+        </Stagger>
+      </div>
+
+      <h2 className="rt-h2">Atalhos</h2>
       <div className="tiles">
-        <Link className="tile primary" to="nova"><strong>Nova entrega</strong><span>Cadastre o cliente e o endereço.</span></Link>
-        <Link className="tile" to="/pendencias">
-          <strong>Continuar atendimento</strong>
-          <span>{awaiting} compra(s) aguardando caixas{draft ? ' · 1 rascunho' : ''}</span>
-        </Link>
+        <Link className="tile" to="nova"><strong>Nova entrega</strong><span>Cadastre o cliente e o endereço.</span></Link>
+        <Link className="tile" to="/pendencias"><strong>Continuar atendimento</strong><span>{awaiting.length} compra(s) aguardando caixas{draft ? ' · 1 rascunho' : ''}</span></Link>
         <Link className="tile" to="ficha"><strong>Ficha de papel</strong><span>Fotografe a ficha, revise e crie a entrega.</span></Link>
         <Link className="tile" to="/entregas"><strong>Consultar entregas</strong><span>Encontre uma compra pelo cliente ou pelo código.</span></Link>
       </div>
@@ -100,7 +119,7 @@ function NovaEntrega() {
 
   return (
     <>
-      <Header title="Nova entrega." subtitle="Identifique o cliente, confirme o endereço e cadastre."
+      <Header title="Nova entrega" subtitle="Identifique o cliente, confirme o endereço e cadastre."
         actions={touched && <button type="button" onClick={discard}>Descartar rascunho</button>} />
       <Steps current={1} />
       <section className="card">
@@ -169,7 +188,7 @@ function IdentificarCaixas() {
   const [gas, setGas] = useState(order?.gas ?? 0);
   const [error, setError] = useState('');
 
-  if (!order) return <><Header title="Entrega não encontrada." /><Empty><Link to="/atendimento">Voltar ao atendimento</Link></Empty></>;
+  if (!order) return <><Header title="Entrega não encontrada" /><Empty><Link to="/atendimento">Voltar ao atendimento</Link></Empty></>;
 
   const add = () => setRows((r) => [...r, { key: ++uid, code: nextCode(r.map((x) => x.code)), type: 'ambient', location: DEFAULT_BOX_LOCATION.ambient }]);
   const update = (key: number, patch: Partial<BoxInput>) => setRows((r) => r.map((x) => (x.key === key ? { ...x, ...patch } : x)));
@@ -191,7 +210,7 @@ function IdentificarCaixas() {
 
   return (
     <>
-      <Header title="Identificar caixas." subtitle="Uma linha por caixa, inclusive a que está no frio."
+      <Header title="Identificar caixas" subtitle="Uma linha por caixa, inclusive a que está no frio."
         actions={<Link className="btn" to="/pendencias">Voltar</Link>} />
       <Steps current={2} />
       <section className="card">

@@ -67,7 +67,7 @@ function Empresas() {
 
   return (
     <>
-      <Header title="Empresas." subtitle="Quem usa o serviço, quantos acessos tem e quando entrou pela última vez."
+      <Header title="Empresas" subtitle="Quem usa o serviço, quantos acessos tem e quando entrou pela última vez."
         actions={<button type="button" className="primary" onClick={() => setCreating(true)}>+ Nova empresa</button>} />
       {error && <p className="error" role="alert">{error}</p>}
       <section className="card">
@@ -119,7 +119,7 @@ function NewCompany({ onClose, onCreated }: { onClose: () => void; onCreated: ()
 
   if (done) {
     return (
-      <Modal title="Empresa criada" onClose={onCreated} footer={<button type="button" className="primary" onClick={onCreated}>Concluir</button>}>
+      <Modal title="Empresa criada" icon="check" tone="success" onClose={onCreated} footer={<button type="button" className="primary" onClick={onCreated}>Concluir</button>}>
         <p><strong>{done.company}</strong> já pode entrar. Envie o acesso ao responsável por um canal privado:</p>
         <CopyBox text={`E-mail: ${done.email}\nSenha provisória: ${done.password}`} />
         <p className="muted small">Esta senha só aparece agora. No primeiro acesso a pessoa será obrigada a criar a dela.</p>
@@ -234,7 +234,7 @@ function AddUser({ companyId, onClose, onCreated }: { companyId: number; onClose
   };
   if (created) {
     return (
-      <Modal title="Usuário criado" onClose={onCreated} footer={<button type="button" className="primary" onClick={onCreated}>Concluir</button>}>
+      <Modal title="Usuário criado" icon="check" tone="success" onClose={onCreated} footer={<button type="button" className="primary" onClick={onCreated}>Concluir</button>}>
         <CopyBox text={`E-mail: ${email.toLowerCase()}\nSenha provisória: ${password}`} />
         <p className="muted small">Envie por um canal privado. A pessoa troca a senha no primeiro acesso. Motoristas são criados pela gestão da empresa, ligados ao cadastro de motorista.</p>
       </Modal>
@@ -261,7 +261,7 @@ function AddUser({ companyId, onClose, onCreated }: { companyId: number; onClose
 
 function TempPassword({ user, password, onClose }: { user: UserRow; password: string; onClose: () => void }) {
   return (
-    <Modal title="Senha provisória" onClose={onClose} footer={<button type="button" className="primary" onClick={onClose}>Fechar</button>}>
+    <Modal title="Senha provisória" icon="shield" onClose={onClose} footer={<button type="button" className="primary" onClick={onClose}>Fechar</button>}>
       <p>Nova senha de <strong>{user.name}</strong> ({user.email}):</p>
       <CopyBox text={password} />
       <p className="muted small">Ela só aparece agora e não fica registrada em lugar nenhum. A pessoa precisa trocá-la ao entrar.</p>
@@ -297,7 +297,7 @@ function BuscaUsuarios() {
 
   return (
     <>
-      <Header title="Buscar usuário." subtitle="Encontre um acesso em qualquer empresa para redefinir a senha ou desativar." />
+      <Header title="Buscar usuário" subtitle="Encontre um acesso em qualquer empresa para redefinir a senha ou desativar." />
       <section className="card">
         <label className="field">Nome ou e-mail<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ex.: maria ou @mercado.com" autoFocus /></label>
         {error && <p className="error" role="alert">{error}</p>}
@@ -340,7 +340,7 @@ function Auditoria() {
 
   return (
     <>
-      <Header title="Auditoria." subtitle="Entradas, redefinições de senha e ações de todas as empresas." />
+      <Header title="Auditoria" subtitle="Entradas, redefinições de senha e ações de todas as empresas." />
       <section className="card">
         <div className="actions" style={{ marginBottom: 12 }}>
           <label className="field">Empresa

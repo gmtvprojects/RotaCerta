@@ -1,53 +1,67 @@
+import { useState } from 'react';
 import type { Order } from '@rotacerta/domain';
 import { useStore } from '../app/store';
+import { Icon } from '../app/icons';
+import { Counter, Item, Stagger } from '../app/motion';
 import { Empty, Header, OrderPill } from './ui';
 
 const place = (o: Order) => (o.cold || o.frozen ? o.storage : 'Área de expedição');
+type Filter = 'all' | 'cold' | 'gas' | 'none';
 
+/** Volumes e caixas (layout do Rota): números do dia, abas e uma linha por entrega com os selos de cada volume. */
 export function Volumes() {
   const { data } = useStore();
-  const orders = data.orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
+  const [q, setQ] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+  const open = data.orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled');
+  const needle = q.trim().toLowerCase();
+  const orders = open.filter((o) =>
+    (filter === 'all' || (filter === 'cold' && (o.cold || o.frozen)) || (filter === 'gas' && o.gas) || (filter === 'none' && !o.boxes.length)) &&
+    (!needle || o.name.toLowerCase().includes(needle) || String(o.id).includes(needle) || o.boxes.some((b) => b.toLowerCase().includes(needle))));
+  const boxes = open.reduce((n, o) => n + o.boxes.length, 0);
+  const cold = open.filter((o) => o.cold || o.frozen).length;
+  const none = open.filter((o) => !o.boxes.length).length;
+
   return (
     <>
-      <Header title="Cada caixa, no lugar certo." subtitle="Identifique a caixa física, o conteúdo e onde ela está guardada." />
-      <section className="card">
-        {orders.length === 0 ? <Empty>Nenhum volume em operação.</Empty> : (
-          <>
-            <div className="table-wrap has-cards">
-              <table>
-                <thead><tr><th>Entrega</th><th>Caixas</th><th>Frio</th><th>Congelado</th><th>Gás</th><th>Local</th><th>Status</th></tr></thead>
-                <tbody>
-                  {orders.map((o) => (
-                    <tr key={o.id}>
-                      <td>#{o.id} {o.name}</td>
-                      <td>{o.boxes.length ? o.boxes.join(', ') : <span className="muted">Sem caixas</span>}</td>
-                      <td>{o.cold}</td><td>{o.frozen}</td><td>{o.gas}</td><td>{place(o)}</td>
-                      <td><OrderPill status={o.status} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <ul className="m-list">
-              {orders.map((o) => (
-                <li key={o.id} className="m-row">
-                  <span className="m-title"><span className="m-code">#{o.id}</span>{o.name}</span>
-                  <span className="m-end"><OrderPill status={o.status} /></span>
+      <Header title="Volumes e caixas" subtitle="Identifique a caixa física, o conteúdo e onde ela está guardada." actions={
+        <label className="rt-search"><Icon name="search" size={18} />
+          <input type="search" aria-label="Buscar caixa, entrega ou cliente" placeholder="Caixa, entrega ou cliente" value={q} onChange={(e) => setQ(e.target.value)} />
+        </label>} />
+
+      <Stagger className="rt-stats">
+        <Item className="rt-stat"><span>Caixas em operação</span><b><Counter to={boxes} /></b><small>{open.length} entrega(s)</small></Item>
+        <Item className="rt-stat"><span>Com frio ou congelado</span><b className="blue"><Counter to={cold} /></b><small>guardadas separadas</small></Item>
+        <Item className="rt-stat"><span>Sem caixas</span><b className={none ? 'red' : ''}><Counter to={none} /></b><small>{none ? 'aguardam identificação' : 'tudo identificado'}</small></Item>
+      </Stagger>
+
+      <div className="chips">
+        {([['all', 'Todas'], ['cold', 'Frio e congelado'], ['gas', 'Com gás'], ['none', 'Sem caixas']] as [Filter, string][]).map(([k, label]) => (
+          <button key={k} type="button" className={filter === k ? 'chip on' : 'chip'} onClick={() => setFilter(k)}>{label}</button>
+        ))}
+      </div>
+
+      {orders.length === 0 ? <Empty>Nenhum volume encontrado.</Empty> : (
+        <Stagger as="ul" className="rt-list" key={filter} count={orders.length}>
+          {orders.map((o) => (
+            <Item as="li" key={o.id}>
+              <div className="rt-item rt-item-static">
+                <span className="rt-name">
+                  <b>#{o.id} · {o.name}</b>
+                  <small>{place(o)}</small>
                   <span className="m-tags">
-                    {o.boxes.length ? o.boxes.map((b) => <span key={b} className="tag">{b}</span>) : <span className="muted small">Sem caixas</span>}
-                  </span>
-                  <span className="m-tags">
+                    {o.boxes.length ? o.boxes.map((b) => <span key={b} className="tag">{b}</span>) : <span className="tag gas">Sem caixas</span>}
                     {o.cold > 0 && <span className="tag cold">Frio {o.cold}</span>}
                     {o.frozen > 0 && <span className="tag frozen">Congelado {o.frozen}</span>}
                     {o.gas > 0 && <span className="tag gas">Gás {o.gas}</span>}
-                    <span className="muted small">{place(o)}</span>
                   </span>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
+                </span>
+                <OrderPill status={o.status} />
+              </div>
+            </Item>
+          ))}
+        </Stagger>
+      )}
     </>
   );
 }

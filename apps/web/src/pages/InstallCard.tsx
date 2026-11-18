@@ -22,7 +22,7 @@ export function InstallCard({ compact = false }: { compact?: boolean }) {
       </div>
       <p className="muted small" role="status">{status}{pwa.updateAvailable ? ' Há uma nova versão pronta.' : ''}</p>
       {guide && (
-        <Modal title="Instalar o RotaCerta" onClose={() => setGuide(false)} footer={<button type="button" className="primary" onClick={() => setGuide(false)}>Entendi</button>}>
+        <Modal title="Instalar o RotaCerta" icon="phone" onClose={() => setGuide(false)} footer={<button type="button" className="primary" onClick={() => setGuide(false)}>Entendi</button>}>
           {!pwa.secure ? (
             <p>A instalação precisa do aplicativo publicado por <strong>HTTPS</strong>. Em desenvolvimento local, use <code>localhost</code>.</p>
           ) : pwa.isIOS ? (

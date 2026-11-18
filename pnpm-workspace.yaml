@@ -3,3 +3,8 @@ packages:
   - packages/*
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@ionic/core@9.0.12'
+  - '@ionic/react-router@9.0.12'
+  - '@ionic/react@9.0.12'
+  - '@stencil/core@4.45.4'

@@ -11,16 +11,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
-    "@fontsource-variable/instrument-sans": "^5.3.0",
-    "@fontsource-variable/jetbrains-mono": "^5.3.0",
-    "@fontsource-variable/newsreader": "^5.3.0",
-    "@rotacerta/domain": "workspace:*",
+    "@base-ui/react": "^1.9.0",
+    "@fontsource-variable/public-sans": "^5.3.0",
     "@rotacerta/contracts": "workspace:*",
+    "@rotacerta/domain": "workspace:*",
+    "@tailwindcss/vite": "^4.3.5",
     "leaflet": "^1.9.4",
+    "motion": "^14.14.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
+    "tailwindcss": "^4.3.5",
     "zod": "^4.6.7"
   },
   "devDependencies": {

@@ -299,7 +299,7 @@ export function RouteMap({ area }: { area?: RefObject<HTMLElement | null> }) {
       if (store) {
         const p = store;
         ctx.fillStyle = '#fff'; ctx.fillRect(p.x - 7, p.y - 7, 14, 14);
-        ctx.font = "500 11px 'JetBrains Mono Variable', monospace"; ctx.fillText('LOJA', p.x - 13, p.y + 24);
+        ctx.font = "500 11px 'Public Sans Variable', monospace"; ctx.fillText('LOJA', p.x - 13, p.y + 24);
       }
       if (!still && !document.hidden) raf = requestAnimationFrame(draw);
     };

@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useStore } from '../app/store';
-import { Empty, Header, OrderPill } from './ui';
+import type { ReactNode } from 'react';
+import { Header } from './ui';
+import { Icon, type IconName } from '../app/icons';
+import { Counter, Item, Stagger } from '../app/motion';
 
 export function Pendencias() {
   const { data, draft, papers } = useStore();
@@ -10,49 +13,69 @@ export function Pendencias() {
 
   return (
     <>
-      <Header title="Continuar atendimento." subtitle="Abra apenas o que falta concluir."
+      <Header title="Continuar atendimento" subtitle="Abra apenas o que falta concluir."
         actions={<Link className="btn primary" to="/atendimento/nova">Nova entrega</Link>} />
 
-      <section className="card">
-        <h2>Cadastro em rascunho</h2>
-        {draft ? (
-          <div className="row-item">
-            <div><strong>{draft.name || 'Novo cliente'}</strong><div className="muted small">{draft.phone || 'Número ainda não informado'}</div></div>
-            <Link className="btn" to="/atendimento/nova">Continuar</Link>
-          </div>
-        ) : <Empty>Nenhum rascunho. Os dados digitados ficam salvos neste navegador.</Empty>}
-      </section>
+      <Stagger className="rt-stats">
+        <Item className="rt-stat"><span>Rascunho</span><b><Counter to={draft ? 1 : 0} /></b><small>cadastro iniciado</small></Item>
+        <Item className="rt-stat"><span>Fichas para revisar</span><b className="blue"><Counter to={pendingPapers.length} /></b><small>fotos e rascunhos</small></Item>
+        <Item className="rt-stat"><span>Aguardando caixas</span><b className={awaiting.length ? 'red' : ''}><Counter to={awaiting.length} /></b><small>compras sem volumes</small></Item>
+        <Item className="rt-stat"><span>Prontas</span><b className="green"><Counter to={ready.length} /></b><small>para a expedição</small></Item>
+      </Stagger>
 
-      <section className="card">
-        <h2>Fichas para revisar</h2>
-        {pendingPapers.length === 0 ? <Empty>Nenhuma ficha aguardando revisão.</Empty> : pendingPapers.map((p) => (
-          <div className="row-item" key={p.id}>
-            <div><strong>{p.sheetNumber}</strong> <span className={`pill ${p.status === 'draft' ? 'amber' : 'blue'}`}>{p.status === 'draft' ? 'Rascunho salvo' : 'Foto anexada'}</span>
-              <div className="muted small">{p.values.name || 'Sem nome ainda'}</div></div>
-            <Link className="btn primary" to={`/atendimento/ficha/${p.id}`}>Continuar</Link>
-          </div>
-        ))}
-      </section>
-
-      <section className="card">
-        <h2>Compras aguardando caixas</h2>
-        {awaiting.length === 0 ? <Empty>Tudo em dia.</Empty> : awaiting.map((o) => (
-          <div className="row-item" key={o.id}>
-            <div><strong>#{o.id} · {o.name}</strong><div className="muted small">{o.street}, {o.number} — {o.neighborhood}</div></div>
-            <Link className="btn primary" to={`/atendimento/caixas/${o.id}`}>Identificar caixas</Link>
-          </div>
-        ))}
-      </section>
-
-      <section className="card">
-        <h2>Prontas para a expedição</h2>
-        {ready.length === 0 ? <Empty>Nenhuma compra pronta.</Empty> : ready.map((o) => (
-          <div className="row-item" key={o.id}>
-            <div><strong>#{o.id} · {o.name}</strong><div className="muted small">{o.boxes.length} caixa(s) · {o.window}</div></div>
-            <span><OrderPill status={o.status} /> <Link className="btn" to={`/atendimento/caixas/${o.id}`}>Editar caixas</Link></span>
-          </div>
-        ))}
-      </section>
+      <div className="rt-split">
+        <div className="rt-main rt-stack">
+          <Panel title="Compras aguardando caixas" empty="Tudo em dia." count={awaiting.length}>
+            {awaiting.map((o) => (
+              <Row key={o.id} icon="box" tone="red" title={`#${o.id} · ${o.name}`} sub={`${o.street}, ${o.number} — ${o.neighborhood}`}>
+                <Link className="btn primary" to={`/atendimento/caixas/${o.id}`}>Identificar caixas</Link>
+              </Row>
+            ))}
+          </Panel>
+          <Panel title="Prontas para a expedição" empty="Nenhuma compra pronta." count={ready.length}>
+            {ready.map((o) => (
+              <Row key={o.id} icon="check" tone="green" title={`#${o.id} · ${o.name}`} sub={`${o.boxes.length} caixa(s) · ${o.window}`}>
+                <Link className="btn" to={`/atendimento/caixas/${o.id}`}>Editar caixas</Link>
+              </Row>
+            ))}
+          </Panel>
+        </div>
+        <div className="rt-side rt-stack">
+          <Panel title="Cadastro em rascunho" empty="Nenhum rascunho. Os dados digitados ficam salvos neste navegador." count={draft ? 1 : 0}>
+            {draft && (
+              <Row icon="user" tone="blue" title={draft.name || 'Novo cliente'} sub={draft.phone || 'Número ainda não informado'}>
+                <Link className="btn primary" to="/atendimento/nova">Continuar</Link>
+              </Row>
+            )}
+          </Panel>
+          <Panel title="Fichas para revisar" empty="Nenhuma ficha aguardando revisão." count={pendingPapers.length}>
+            {pendingPapers.map((p) => (
+              <Row key={p.id} icon="list" tone={p.status === 'draft' ? 'amber' : 'blue'} title={p.sheetNumber} sub={`${p.status === 'draft' ? 'Rascunho salvo' : 'Foto anexada'} · ${p.values.name || 'sem nome ainda'}`}>
+                <Link className="btn" to={`/atendimento/ficha/${p.id}`}>Continuar</Link>
+              </Row>
+            ))}
+          </Panel>
+        </div>
+      </div>
     </>
+  );
+}
+
+function Panel({ title, empty, count, children }: { title: string; empty: string; count: number; children: ReactNode }) {
+  return (
+    <section className="card rt-panel" aria-label={title}>
+      <div className="rt-panel-head"><h2>{title}</h2><span className="pill">{count}</span></div>
+      {count === 0 ? <p className="rt-empty">{empty}</p> : <ul className="rt-rows">{children}</ul>}
+    </section>
+  );
+}
+
+function Row({ icon, tone, title, sub, children }: { icon: IconName; tone: string; title: string; sub: string; children: ReactNode }) {
+  return (
+    <li className="rt-row rt-row-static">
+      <span className={`rt-dot ${tone}`} aria-hidden="true"><Icon name={icon} size={18} /></span>
+      <span className="rt-name"><b>{title}</b><small>{sub}</small></span>
+      {children}
+    </li>
   );
 }

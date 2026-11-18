@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { call } from '../app/api';
 import { useStore } from '../app/store';
 import { ReasonDialog } from './OrderActions';
+import { Icon } from '../app/icons';
 import { Empty, Header, Modal } from './ui';
 
 interface Last { lat: number; lng: number; accuracy: number | null; speed: number | null; heading: number | null; recordedAt: string }
@@ -70,37 +71,76 @@ export function Acompanhamento() {
 
   const current = useMemo(() => live.find((l) => l.routeId === selected) ?? null, [live, selected]);
 
+  const age = current?.last ? ageOf(current.last.recordedAt, now) : null;
+  const tone = age === null ? 'red' : freshness(age);
+  const left = current ? Math.max(0, current.stops - current.done - (current.current ? 1 : 0)) : 0;
+  const initials = (current?.driverName ?? 'M').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+
   return (
     <>
-      <Header title="Viagens ao vivo." subtitle="Onde cada motorista está e qual a próxima parada." />
       {error && <p className="error" role="alert">{error}</p>}
       {live.length === 0 ? (
-        <Empty>Nenhuma viagem em andamento. Quando um motorista iniciar o romaneio, ele aparece aqui.</Empty>
+        <>
+          <Header title="Viagens" subtitle="Onde cada motorista está e qual a próxima parada." />
+          <Empty>Nenhuma viagem em andamento. Quando um motorista iniciar o romaneio, ele aparece aqui.</Empty>
+        </>
       ) : (
-        <div className="track">
-          <div className="track-list">
-            {live.map((l) => {
-              const age = l.last ? ageOf(l.last.recordedAt, now) : null;
-              const tone = age === null ? 'red' : freshness(age);
-              return (
-                <button type="button" key={l.routeId} className={`track-card ${selected === l.routeId ? 'on' : ''}`} onClick={() => setSelected(l.routeId)}>
-                  <strong>Romaneio #{l.routeId}</strong>
-                  <span>{l.driverName ?? 'Motorista'} · {l.vehicle}</span>
-                  <span className="muted small">{l.done} de {l.stops} paradas</span>
-                  {l.current && <span className="small">Próxima: {l.current.name} — {l.current.street}, {l.current.number} ({l.current.neighborhood})</span>}
-                  <span className={`pill ${tone === 'green' ? 'green' : tone === 'amber' ? 'amber' : 'red'}`}>
-                    {l.last && age !== null ? `${ageLabel(age)}${l.last.speed ? ` · ${Math.round(l.last.speed * 3.6)} km/h` : ''}` : 'Aguardando a primeira posição'}
-                  </span>
-                  {age !== null && age > STALE_S && <span className="small error">Sem posição nova há mais de {Math.floor(STALE_S / 60)} min. Verifique com o motorista.</span>}
+        <>
+          <nav className="rt-crumb" aria-label="Caminho"><span>Viagens</span><span aria-hidden="true">/</span><b>{current ? `Romaneio #${current.routeId}` : ''}</b></nav>
+          {current && (
+            <header className="rt-trip-head">
+              <div>
+                <h1>{current.current ? `Próxima parada: ${current.current.name}` : 'Todas as paradas concluídas'}</h1>
+                <p className="muted">{current.driverName ?? 'Motorista'} · {current.vehicle} · saída {current.departure} · {current.done} de {current.stops} paradas</p>
+              </div>
+              <span className={`rt-state ${tone}`}><Icon name="truck" size={18} />{current.last && age !== null ? `Posição ${ageLabel(age)}` : 'Aguardando a primeira posição'}</span>
+            </header>
+          )}
+
+          {live.length > 1 && (
+            <div className="chips" role="tablist" aria-label="Viagens em andamento">
+              {live.map((l) => (
+                <button type="button" role="tab" aria-selected={selected === l.routeId} key={l.routeId} className={selected === l.routeId ? 'chip on' : 'chip'} onClick={() => setSelected(l.routeId)}>
+                  #{l.routeId} · {l.driverName ?? 'Motorista'}
                 </button>
-              );
-            })}
+              ))}
+            </div>
+          )}
+
+          <div className="rt-split">
+            <section className="rt-map-card rt-main" aria-label="Mapa">
+              <TrackMap live={live} selected={current} trail={trail} now={now} onSelect={setSelected} />
+              <div className="rt-legend">
+                <span><i className="bar" />Percorrido</span>
+                <span><i className="dot green" />Posição recente</span>
+                <span><i className="dot amber" />Posição antiga</span>
+                <span><i className="dot gray" />Sem sinal</span>
+              </div>
+            </section>
+
+            {current && (
+              <div className="rt-side rt-stack">
+                <section className="card" aria-label="Etapas">
+                  <h2>Etapas</h2>
+                  <ol className="rt-steps">
+                    <li className="ok"><span /><div><b>Saída do romaneio</b><small>{current.vehicle} · {current.departure}</small></div></li>
+                    <li className="ok"><span /><div><b>{current.done} de {current.stops} paradas concluídas</b><small>{current.done === current.stops ? 'Viagem completa' : 'Já entregues'}</small></div></li>
+                    {current.current
+                      ? <li className="now"><span /><div><b>Próxima: {current.current.name}</b><small>{current.current.street}, {current.current.number} · {current.current.neighborhood}</small></div></li>
+                      : <li className="now"><span /><div><b>Sem próxima parada</b><small>Todas as entregas foram registradas.</small></div></li>}
+                    <li className="todo"><span /><div><b>{left} parada(s) depois</b><small>Ainda por fazer</small></div></li>
+                  </ol>
+                  {age !== null && age > STALE_S && <p className="error small" role="alert">Sem posição nova há mais de {Math.floor(STALE_S / 60)} min. Verifique com o motorista.</p>}
+                </section>
+                <section className="card rt-driver" aria-label="Motorista">
+                  <div className="avatar">{initials}</div>
+                  <div className="rt-driver-name"><b>{current.driverName ?? 'Motorista'}</b><small>Motorista · {current.last?.speed ? `${Math.round(current.last.speed * 3.6)} km/h` : 'parado ou sem velocidade'}</small></div>
+                </section>
+                <TripActions live={current} onDone={() => void load()} />
+              </div>
+            )}
           </div>
-          <div>
-            <TrackMap live={live} selected={current} trail={trail} now={now} onSelect={setSelected} />
-            {current && <TripActions live={current} onDone={() => void load()} />}
-          </div>
-        </div>
+        </>
       )}
     </>
   );
@@ -145,7 +185,7 @@ function TrackMap({ live, selected, trail, now, onSelect }: { live: Live[]; sele
     const m = map.current;
     if (!m) return;
     line.current?.remove();
-    line.current = trail.length > 1 ? L.polyline(trail.map((p) => [p.lat, p.lng] as [number, number]), { color: '#2563eb', weight: 4, opacity: 0.7 }).addTo(m) : null;
+    line.current = trail.length > 1 ? L.polyline(trail.map((p) => [p.lat, p.lng] as [number, number]), { color: '#34d399', weight: 5, opacity: 0.9 }).addTo(m) : null;
   }, [trail]);
 
   // enquadra a viagem escolhida uma vez (depois o usuário mexe no mapa à vontade)
@@ -175,7 +215,7 @@ function TripActions({ live, onDone }: { live: Live; onDone: () => void }) {
   };
 
   return (
-    <div className="actions" style={{ marginTop: 12 }}>
+    <div className="actions rt-trip-actions">
       <button type="button" onClick={() => { setError(''); setDialog('driver'); }}>Trocar motorista</button>
       <button type="button" className="danger" onClick={() => setDialog('interrupt')}>Interromper viagem</button>
       {dialog === 'driver' && (

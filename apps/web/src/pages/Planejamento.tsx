@@ -13,7 +13,7 @@ export function Planejamento() {
   if (!plan) {
     return (
       <>
-        <Header title="Planeje a sequência de paradas." subtitle="Comece selecionando as entregas que vão na mesma carga." />
+        <Header title="Planejamento" subtitle="Comece selecionando as entregas que vão na mesma carga." />
         <section className="card"><Empty>Nenhuma carga em planejamento.</Empty>
           <div className="actions" style={{ justifyContent: 'center' }}><Link className="btn primary" to="/expedicao">Ir para expedição</Link></div>
         </section>
@@ -55,7 +55,7 @@ export function Planejamento() {
 
   return (
     <>
-      <Header title="A ordem é sua. O controle, de todos." subtitle="Arraste as paradas ou use as setas. A sequência também orienta o carregamento."
+      <Header title="Sequência das paradas" subtitle="Arraste as paradas ou use as setas. A sequência também orienta o carregamento."
         actions={<Link className="btn" to="/expedicao">Voltar à seleção</Link>} />
 
       <section className="card">

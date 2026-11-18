@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import type { Notification } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { Header } from './ui';
+import { Icon } from '../app/icons';
+import { Counter, Item, Stagger } from '../app/motion';
 
 const STATUS: Record<Notification['status'], [string, string]> = {
   queued: ['Na fila', 'blue'], delivered: ['Enviado (simulado)', 'green'], failed: ['Falhou', 'red'], skipped: ['Não enviado', 'amber'],
@@ -21,37 +23,36 @@ export function Notificacoes() {
 
   return (
     <>
-      <Header title="A informação chega antes da compra." subtitle="Acompanhe os avisos gerados pelas mudanças de status."
+      <Header title="Notificações" subtitle="Acompanhe os avisos gerados pelas mudanças de status."
         actions={<Link className="btn primary" to="/motorista">Testar com o motorista</Link>} />
-      <section className="card">
-        <div className="card-head"><h2>WhatsApp automático por evento</h2><span className="pill amber">API não conectada · simulação</span></div>
-        <p className="muted small">Uma entrega concluída aciona o aviso da próxima parada. Sem envio real e com telefones fictícios.</p>
-        <div className="kpis">
-          <div className="card kpi"><span className="muted">Avisos simulados</span><strong>{count('delivered')}</strong></div>
-          <div className="card kpi"><span className="muted">Falhas simuladas</span><strong>{count('failed')}</strong><span className="muted small">Disponíveis para novo teste</span></div>
-          <div className="card kpi"><span className="muted">Sem autorização</span><strong>{count('skipped')}</strong><span className="muted small">Aviso não disparado</span></div>
-        </div>
-      </section>
+      <p className="muted small rt-lead"><span className="pill amber">API não conectada · simulação</span> Uma entrega concluída aciona o aviso da próxima parada. Sem envio real e com telefones fictícios.</p>
+      <Stagger className="rt-stats">
+        <Item className="rt-stat"><span>Avisos simulados</span><b className="green"><Counter to={count('delivered')} /></b><small>enviados com sucesso</small></Item>
+        <Item className="rt-stat"><span>Falhas simuladas</span><b className={count('failed') ? 'red' : ''}><Counter to={count('failed')} /></b><small>disponíveis para novo teste</small></Item>
+        <Item className="rt-stat"><span>Sem autorização</span><b><Counter to={count('skipped')} /></b><small>aviso não disparado</small></Item>
+      </Stagger>
       {error && <div className="banner" role="alert">{error}</div>}
 
-      <div className="scan-layout">
-        <section className="card">
-          <h2>Histórico de notificações</h2>
-          <p className="muted small">{list.length} eventos · proteção contra duplicidade por parada</p>
-          {list.length === 0 ? <p className="muted">Nenhum aviso ainda. Inicie uma viagem para gerar o primeiro.</p> : list.map((n) => {
-            const [label, tone] = STATUS[n.status];
-            return (
-              <div className={`row-item ${selected?.id === n.id ? 'sel' : ''}`} key={n.id}>
-                <button type="button" className="textbtn" style={{ textAlign: 'left' }} onClick={() => setSelectedId(n.id)}>
-                  <strong>{n.name}</strong> <span className="muted small">{EVENT[n.event]} · Romaneio #{n.routeId} · {n.created}</span>
-                </button>
-                <span className="actions">
-                  <span className={`pill ${tone}`}>{label}</span>
-                  {n.status === 'failed' && <button type="button" onClick={() => retry(n.id)}>Reenviar</button>}
-                </span>
-              </div>
-            );
-          })}
+      <div className="rt-split">
+        <section className="card rt-panel rt-main" aria-label="Histórico de notificações">
+          <div className="rt-panel-head"><h2>Histórico</h2><span className="muted small">{list.length} evento(s) · um aviso por parada</span></div>
+          {list.length === 0 ? <p className="empty">Nenhum aviso ainda. Inicie uma viagem para gerar o primeiro.</p> : (
+            <ul className="rt-rows">
+              {list.map((n) => {
+                const [label, tone] = STATUS[n.status];
+                return (
+                  <li key={n.id}>
+                    <button type="button" className={`rt-row ${selected?.id === n.id ? 'sel' : ''}`} onClick={() => setSelectedId(n.id)}>
+                      <span className={`rt-dot ${tone}`} aria-hidden="true"><Icon name={n.status === 'delivered' ? 'check' : n.status === 'failed' ? 'alert' : 'bell'} size={18} /></span>
+                      <span className="rt-name"><b>{n.name}</b><small>{EVENT[n.event]} · Romaneio #{n.routeId}</small></span>
+                      <span className="rt-when">{n.created}</span>
+                      <span className={`pill ${tone}`}>{label}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
         {selected && <Preview n={selected} onRetry={() => retry(selected.id)} />}
       </div>
@@ -65,7 +66,7 @@ function Preview({ n, onRetry }: { n: Notification; onRetry: () => void }) {
   const valid = digits.length === 10 || digits.length === 11;
   const [label, tone] = STATUS[n.status];
   return (
-    <aside className="card">
+    <aside className="card rt-side">
       <div className="card-head"><h2>Prévia da mensagem</h2><span className="pill blue">Simulação</span></div>
       <div className="wa-bubble"><small>Amaro Supermercados</small><p>{n.message}</p></div>
       <div className="summary-line"><span>Para</span><strong>{n.name} · {n.phone}</strong></div>

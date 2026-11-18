@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { ORDER_STATUS_LABELS, ROUTE_STATUS_LABELS, type Order, type Route } from '@rotacerta/domain';
-import { Icon } from '../app/icons';
+import { Icon, type IconName } from '../app/icons';
 import { SlideUpText } from '../app/SlideUpText';
+import { AnimatePresence, motion } from 'motion/react';
+import { Dialog } from '@base-ui/react/dialog';
+import { BOUNCY } from '../app/motion';
 
 export function Header({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
@@ -28,16 +31,37 @@ export const RoutePill = ({ status }: { status: Route['status'] }) => (
 
 export const Empty = ({ children }: { children: ReactNode }) => <div className="empty">{children}</div>;
 
-export function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
+/**
+ * Janela de diálogo. Base UI cuida do que é difícil (foco preso, Escape, rolagem travada, leitor de tela)
+ * e o Motion anima entrada e saída. Quem chama continua usando `onClose`: ele só roda quando a
+ * animação de saída termina; se a tela fechar o modal por conta própria, ele some na hora.
+ */
+export function Modal({ title, onClose, children, footer, icon, tone = 'info' }: {
+  title: string; onClose: () => void; children: ReactNode; footer?: ReactNode;
+  /** Ícone em círculo acima do título, como nos diálogos do Rota (cancelar, avaliar, filtros). */
+  icon?: IconName; tone?: 'info' | 'danger' | 'success';
+}) {
+  const [open, setOpen] = useState(true);
   return (
-    <div className="backdrop" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
-        <h2>{title}</h2>
-        <div className="modal-body">{children}</div>
-        <div className="modal-foot">{footer}</div>
-      </div>
-    </div>
+    <Dialog.Root open={open} onOpenChange={(next) => { if (!next) setOpen(false); }}>
+      <AnimatePresence onExitComplete={onClose}>
+        {open && (
+          <Dialog.Portal keepMounted>
+            <Dialog.Backdrop render={<motion.div className="fixed inset-0 z-50 bg-[rgb(2_8_22/.72)]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} />} />
+            <Dialog.Viewport className="fixed inset-0 z-[51] grid place-items-center p-4">
+              <Dialog.Popup render={<motion.div className="modal" aria-label={title}
+                initial={{ opacity: 0, scale: 0.8, y: 60, rotateX: 14 }} animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 30, transition: { duration: 0.14 } }} transition={BOUNCY} />}>
+                {icon && <span className={`modal-icon ${tone}`} aria-hidden="true"><Icon name={icon} size={22} /></span>}
+                <Dialog.Title render={<h2 />}>{title}</Dialog.Title>
+                <div className="modal-body">{children}</div>
+                <div className="modal-foot">{footer}</div>
+              </Dialog.Popup>
+            </Dialog.Viewport>
+          </Dialog.Portal>
+        )}
+      </AnimatePresence>
+    </Dialog.Root>
   );
 }
 

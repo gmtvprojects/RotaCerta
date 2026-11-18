@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { suggestSequence } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { Empty, Header } from './ui';
+import { Icon } from '../app/icons';
+import { Counter, Item, Stagger } from '../app/motion';
 
 export function Expedicao() {
   const { data, plan, setPlan } = useStore();
@@ -30,16 +32,25 @@ export function Expedicao() {
 
   return (
     <>
-      <Header title="A próxima viagem começa aqui." subtitle="Agrupe os bairros. O motorista mantém a decisão sobre a carga." />
+      <Header title="Montar carga" subtitle="Agrupe os bairros. O motorista mantém a decisão sobre a carga." />
+      <Stagger className="rt-stats">
+        <Item className="rt-stat"><span>Prontas para sair</span><b><Counter to={data.orders.filter((o) => o.status === 'ready' && o.boxes.length > 0).length} /></b><small>com volumes identificados</small></Item>
+        <Item className="rt-stat"><span>Selecionadas</span><b className="green"><Counter to={selected.length} /></b><small>nesta carga</small></Item>
+        <Item className="rt-stat"><span>Veículos livres</span><b className="blue"><Counter to={freeVehicles.length} /></b><small>de {data.vehicles.filter((v) => v.active !== false).length} ativos</small></Item>
+        <Item className="rt-stat"><span>Em conferência</span><b><Counter to={loadingRoutes.length} /></b><small>carga(s) no carregamento</small></Item>
+      </Stagger>
       {loadingRoutes.length > 0 && (
-        <section className="card">
-          <h2>Cargas em conferência</h2>
-          {loadingRoutes.map((r) => (
-            <div className="row-item" key={r.id}>
-              <div><strong>Romaneio #{r.id}</strong><div className="muted small">{r.orders.length} pedido(s) · saída {r.departure} · {Object.keys(r.confirmed ?? {}).length} de {r.orders.length} confirmados</div></div>
-              <Link className="btn primary" to="/carregamento">Retomar conferência</Link>
-            </div>
-          ))}
+        <section className="card rt-panel" aria-label="Cargas em conferência">
+          <div className="rt-panel-head"><h2>Cargas em conferência</h2><Link className="rt-link" to="/carregamento">Ver carregamento</Link></div>
+          <ul className="rt-rows">
+            {loadingRoutes.map((r) => (
+              <li key={r.id} className="rt-row rt-row-static">
+                <span className="rt-dot amber" aria-hidden="true"><Icon name="truck" size={18} /></span>
+                <span className="rt-name"><b>Romaneio #{r.id}</b><small>{r.orders.length} pedido(s) · saída {r.departure} · {Object.keys(r.confirmed ?? {}).length} de {r.orders.length} confirmados</small></span>
+                <Link className="btn primary" to="/carregamento">Retomar</Link>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
       <div className="chips">

@@ -19,7 +19,7 @@ export function Etiquetas() {
 
   return (
     <>
-      <Header title="Etiquetas de identificação." subtitle="Fixe o número permanente na caixa e use uma etiqueta removível para a compra atual."
+      <Header title="Etiquetas" subtitle="Fixe o número permanente na caixa e use uma etiqueta removível para a compra atual."
         actions={<>
           <button type="button" className="primary" disabled={labels.length === 0} onClick={() => window.print()}>Imprimir etiquetas</button>
           <Link className="btn" to="/carregamento">Voltar</Link>

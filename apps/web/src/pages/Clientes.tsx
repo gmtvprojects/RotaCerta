@@ -3,7 +3,9 @@ import type { Client, Order } from '@rotacerta/domain';
 import { call } from '../app/api';
 import { useStore } from '../app/store';
 import { OrderDetail } from './OrderDetail';
-import { Empty, Header, Modal, OrderPill } from './ui';
+import { Header, Modal, OrderPill } from './ui';
+import { Icon } from '../app/icons';
+import { Item, Stagger } from '../app/motion';
 
 type Row = Client & { orders: number };
 interface Search { items: Row[]; total: number }
@@ -30,30 +32,28 @@ export function Clientes() {
 
   return (
     <>
-      <Header title="Clientes." subtitle="Cadastro, histórico de entregas e correções." />
-      <section className="card">
-        <label className="field">Buscar por nome ou telefone
-          <input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder="Ex.: maria ou 0101" />
-        </label>
-        {error && <p className="error" role="alert">{error}</p>}
-        {result.items.length === 0 ? <Empty>Nenhum cliente encontrado.</Empty> : (
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Nome</th><th>Telefone</th><th>Bairro</th><th>Entregas</th><th></th></tr></thead>
-              <tbody>
-                {result.items.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td><td>{c.phone}</td><td>{c.neighborhood}</td><td>{c.orders}</td>
-                    <td><button type="button" onClick={() => setOpen(c.id)}>Abrir</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <Header title="Clientes" subtitle="Cadastro, histórico de entregas e correções." actions={
+        <label className="rt-search"><Icon name="search" size={18} />
+          <input type="search" aria-label="Buscar por nome ou telefone" placeholder="Nome ou telefone" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} />
+        </label>} />
+      {error && <p className="error" role="alert">{error}</p>}
+      <section className="card rt-panel" aria-label="Clientes">
+        <div className="rt-panel-head"><h2>{result.total} cliente(s)</h2><span className="muted small">página {page + 1} de {pages}</span></div>
+        {result.items.length === 0 ? <p className="rt-empty">Nenhum cliente encontrado.</p> : (
+          <Stagger as="ul" className="rt-rows" key={`${q}|${page}`} count={result.items.length}>
+            {result.items.map((c) => (
+              <Item as="li" key={c.id}>
+                <button type="button" className="rt-row" onClick={() => setOpen(c.id)} aria-label={`Abrir ${c.name}`}>
+                  <span className="rt-avatar" aria-hidden="true">{c.name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+                  <span className="rt-name"><b>{c.name}</b><small>{c.phone} · {c.neighborhood}</small></span>
+                  <span className="pill blue">{c.orders} entrega(s)</span>
+                </button>
+              </Item>
+            ))}
+          </Stagger>
         )}
-        <div className="actions">
+        <div className="rt-pager">
           <button type="button" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Anterior</button>
-          <span className="muted small">{result.total} cliente(s) · página {page + 1} de {pages}</span>
           <button type="button" disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>Próxima</button>
         </div>
       </section>

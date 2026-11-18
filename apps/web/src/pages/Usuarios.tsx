@@ -114,7 +114,7 @@ function PasswordDialog({ user, onClose }: { user: UserDto; onClose: () => void 
   };
 
   return (
-    <Modal title={`Nova senha para ${user.name}`} onClose={onClose} footer={<>
+    <Modal title={`Nova senha para ${user.name}`} icon="shield" onClose={onClose} footer={<>
       <button type="button" onClick={onClose}>{done ? 'Fechar' : 'Cancelar'}</button>
       {!done && <button type="button" className="primary" onClick={() => void save()}>Redefinir</button>}
     </>}>

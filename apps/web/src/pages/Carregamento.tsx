@@ -23,7 +23,7 @@ function Lista() {
   const loading = data.routes.filter((r) => r.status === 'loading');
   return (
     <>
-      <Header title="Nada fica para trás." subtitle="Confira fisicamente as caixas e os itens armazenados separadamente."
+      <Header title="Carregamento" subtitle="Nada fica para trás: confira fisicamente as caixas e os itens separados."
         actions={<Link className="btn" to="/expedicao">Montar nova carga</Link>} />
       {loading.length === 0 ? (
         <section className="card"><Empty>Nenhuma carga em conferência. Monte uma carga na expedição para começar.</Empty></section>

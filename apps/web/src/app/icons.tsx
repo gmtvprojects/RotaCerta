@@ -18,6 +18,12 @@ const PATHS = {
   shield: <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />,
   play: <path d="M7 4l13 8-13 8z" />,
   logout: <path d="M9 4H4v16h5M14 8l4 4-4 4M18 12H9" />,
+  alert: <><path d="M21.7 18l-8-14a2 2 0 00-3.4 0l-8 14A2 2 0 004 21h16a2 2 0 001.7-3z" /><path d="M12 9v4M12 17h.01" /></>,
+  star: <path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z" />,
+  sliders: <><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="8" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></>,
+  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  phone: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2" />,
+  map: <><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" /><path d="M9 4v14M15 6v14" /></>,
 } as const;
 
 export type IconName = keyof typeof PATHS;
