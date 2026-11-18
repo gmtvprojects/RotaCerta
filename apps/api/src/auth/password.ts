@@ -11,6 +11,9 @@ export async function hashPassword(password: string): Promise<string> {
   return `scrypt$${salt.toString('hex')}$${hash.toString('hex')}`;
 }
 
+/** Hash de uma senha aleatória, só para gastar o mesmo tempo quando o e-mail não existe. */
+export const DUMMY_HASH = `scrypt$${'0'.repeat(32)}$${'0'.repeat(128)}`;
+
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const [alg, saltHex, hashHex] = stored.split('$');
   if (alg !== 'scrypt' || !saltHex || !hashHex) return false;

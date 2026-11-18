@@ -12,17 +12,17 @@ export const isCompanyRole = (role: AnyRole): role is Role => role !== 'platafor
 export type Page =
   | 'dashboard' | 'atendimento' | 'pendencias' | 'cadastro-concluido' | 'perfis'
   | 'entregas' | 'nova' | 'volumes' | 'expedicao' | 'planejamento' | 'romaneio'
-  | 'carregamento' | 'motorista' | 'acompanhamento' | 'clientes' | 'notificacoes' | 'configuracoes';
+  | 'carregamento' | 'motorista' | 'acompanhamento' | 'clientes' | 'notificacoes' | 'configuracoes' | 'agentes';
 
 /** Páginas permitidas por perfil (derivado do demo de referência). */
 export const ALLOWED_PAGES: Record<Role, readonly Page[]> = {
   gestao: [
     'dashboard', 'atendimento', 'pendencias', 'cadastro-concluido', 'perfis',
     'entregas', 'nova', 'volumes', 'expedicao', 'planejamento', 'romaneio',
-    'carregamento', 'motorista', 'acompanhamento', 'clientes', 'notificacoes', 'configuracoes',
+    'carregamento', 'motorista', 'acompanhamento', 'clientes', 'notificacoes', 'configuracoes', 'agentes',
   ],
-  atendente: ['atendimento', 'pendencias', 'cadastro-concluido', 'perfis', 'entregas', 'nova', 'volumes', 'clientes'],
-  expedicao: ['perfis', 'entregas', 'nova', 'volumes', 'expedicao', 'planejamento', 'romaneio', 'carregamento', 'acompanhamento'],
+  atendente: ['atendimento', 'pendencias', 'cadastro-concluido', 'perfis', 'entregas', 'nova', 'volumes', 'clientes', 'agentes'],
+  expedicao: ['perfis', 'entregas', 'nova', 'volumes', 'expedicao', 'planejamento', 'romaneio', 'carregamento', 'acompanhamento', 'agentes'],
   motorista: ['perfis', 'motorista', 'romaneio'],
 };
 

@@ -3,7 +3,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ZodType } from 'zod';
 import { ANY_ROLE_LABELS, type AnyRole, type Role } from '@rotacerta/domain';
 import type { Ctx } from '../app';
-import { hashPassword, verifyPassword } from '../auth/password';
+import { DUMMY_HASH, hashPassword, verifyPassword } from '../auth/password';
 import { endSession, revokeAll, rotateSession, startSession } from '../auth/sessions';
 import { schema } from '../db/client';
 import { audit } from '../db/audit';
@@ -56,10 +56,23 @@ export function registerAuthRoutes({ app, db, config, guard, company }: Ctx) {
     const p = parse(body.login, req, reply); if (!p) return;
     const email = p.email.toLowerCase();
     const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email));
+    // conta bloqueada por falhas seguidas: mesma resposta de uma senha errada (não revela que o e-mail existe) e nem confere a senha
+    if (user?.lockedUntil && user.lockedUntil > new Date()) {
+      await audit(db, { companyId: user.companyId, action: 'auth.login_locked', userId: user.id, userName: user.name, status: 401, ip: req.ip }, req.log);
+      return reply.code(401).send({ error: 'E-mail ou senha incorretos.' });
+    }
     // mesma resposta para e-mail inexistente, usuário desativado e senha errada
-    const valid = user?.active && await verifyPassword(p.password, user.passwordHash);
+    // sempre confere uma senha (a de verdade ou uma fictícia): o tempo de resposta não revela se o e-mail existe
+    const checked = await verifyPassword(p.password, user?.passwordHash ?? DUMMY_HASH);
+    const valid = !!user?.active && checked;
     if (!user || !valid) {
       // se o e-mail existe, a tentativa fica na auditoria da empresa dele (a gestão vê quem tentou entrar como a equipe)
+      if (user) {
+        const failed = user.failedLogins + 1;
+        const lock = failed >= config.LOGIN_LOCK_FAILURES;
+        await db.update(schema.users).set({ failedLogins: lock ? 0 : failed, lockedUntil: lock ? new Date(Date.now() + config.LOGIN_LOCK_MINUTES * 60_000) : null }).where(eq(schema.users.id, user.id));
+        if (lock) await audit(db, { companyId: user.companyId, action: 'auth.account_locked', userId: user.id, userName: user.name, status: 423, detail: { minutes: config.LOGIN_LOCK_MINUTES }, ip: req.ip }, req.log);
+      }
       await audit(db, { companyId: user?.companyId, action: 'auth.login_failed', status: 401, detail: { email }, ip: req.ip }, req.log);
       return reply.code(401).send({ error: 'E-mail ou senha incorretos.' });
     }
@@ -68,6 +81,7 @@ export function registerAuthRoutes({ app, db, config, guard, company }: Ctx) {
       await audit(db, { companyId: user.companyId, action: 'auth.login_suspended', userId: user.id, userName: user.name, status: 403, ip: req.ip }, req.log);
       return reply.code(403).send({ error: 'O acesso da sua empresa está suspenso. Fale com o suporte.' });
     }
+    if (user.failedLogins || user.lockedUntil) await db.update(schema.users).set({ failedLogins: 0, lockedUntil: null }).where(eq(schema.users.id, user.id));
     setCookie(reply, await startSession(db, user.id, config.REFRESH_DAYS, ua(req)));
     await audit(db, { companyId: user.companyId, action: 'auth.login', userId: user.id, userName: user.name, status: 200, ip: req.ip }, req.log);
     return session(user);
@@ -180,7 +194,7 @@ export function registerAuthRoutes({ app, db, config, guard, company }: Ctx) {
     const p = parse(body.passwordOnly, req, reply); if (!p) return;
     const id = Number((req.params as { id: string }).id);
     // senha definida por outra pessoa: quem entra com ela precisa trocar no primeiro acesso
-    const done = await db.update(schema.users).set({ passwordHash: await hashPassword(p.password), mustChangePassword: true }).where(inCompany(company(req), id)).returning({ id: schema.users.id });
+    const done = await db.update(schema.users).set({ passwordHash: await hashPassword(p.password), mustChangePassword: true, failedLogins: 0, lockedUntil: null }).where(inCompany(company(req), id)).returning({ id: schema.users.id });
     if (!done.length) return reply.code(404).send({ error: 'Usuário não encontrado.' });
     await revokeAll(db, id);
     await audit(db, { ...who(req), action: 'user.password_reset', target: String(id), status: 200 }, req.log);

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte } from 'drizzle-orm';
+import { and, desc, eq, gte } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { nextStop, routeOrders, type Role } from '@rotacerta/domain';
 import type { Ctx } from '../app';
@@ -6,6 +6,7 @@ import { schema } from '../db/client';
 import { withTenant } from '../db/tenants';
 import { loadWorkspace } from '../db/workspace';
 import type { LocationEvent } from '../realtime/events';
+import { GpsSimulator } from '../gps-sim';
 import { MAX_AGE_MS, MAX_FUTURE_MS } from '../tracking';
 import * as body from './schemas';
 
@@ -14,7 +15,26 @@ const MONITORS: Role[] = ['gestao', 'expedicao'];
 type Row = typeof schema.driverLocations.$inferSelect;
 const dto = (r: Row) => ({ lat: r.lat, lng: r.lng, accuracy: r.accuracy, speed: r.speed, heading: r.heading, recordedAt: r.recordedAt.toISOString() });
 
-export function registerTrackingRoutes({ app, db, guard, company, events }: Ctx) {
+export function registerTrackingRoutes({ app, db, guard, company, events, config }: Ctx) {
+  // simulador só existe no ambiente de teste (demonstração); em produção as rotas abaixo nem são registradas
+  const sim = config.APP_ENV === 'test' ? new GpsSimulator(db, events, app.log) : null;
+  if (sim) {
+    app.addHook('onClose', async () => sim.stopAll());
+    /** Liga (ou prolonga) o deslocamento simulado de uma viagem ativa por alguns minutos. */
+    app.post('/api/routes/:id/simulate', { preHandler: guard(MONITORS) }, async (req, reply) => {
+      const routeId = Number((req.params as { id: string }).id);
+      const minutes = Math.min(Math.max(Number((req.body as { minutes?: number } | undefined)?.minutes) || 10, 1), 60);
+      const active = await withTenant(db, company(req), async (tx) => (await tx.select().from(schema.routes).where(eq(schema.routes.id, routeId)))[0]?.status === 'active');
+      if (!active) return reply.code(422).send({ error: 'Só dá para simular uma viagem em andamento.' });
+      sim.start(company(req), routeId, minutes);
+      return { ok: true, minutes };
+    });
+    app.delete('/api/routes/:id/simulate', { preHandler: guard(MONITORS) }, async (req) => {
+      sim.stop(company(req), Number((req.params as { id: string }).id));
+      return { ok: true };
+    });
+  }
+
   /**
    * O app do motorista envia pontos (um ou vários, se ficou sem sinal). Só vale para a viagem ATIVA do próprio
    * motorista: ninguém envia posição de outra rota, e fora da viagem nada é coletado.
@@ -78,6 +98,8 @@ export function registerTrackingRoutes({ app, db, guard, company, events }: Ctx)
         done: orders.filter((o) => o.status === 'delivered' || o.status === 'failed').length,
         current: current ? { orderId: current.id, name: current.name, neighborhood: current.neighborhood, street: current.street, number: current.number } : null,
         last: last ? { ...dto(last), ageSeconds: Math.max(0, Math.round((Date.now() - last.recordedAt.getTime()) / 1000)) } : null,
+        canSimulate: !!sim,
+        simulating: sim?.isRunning(company(req), r.id) ?? false,
       });
     }
     return out;
@@ -91,7 +113,8 @@ export function registerTrackingRoutes({ app, db, guard, company, events }: Ctx)
     const since = q.since && !Number.isNaN(Date.parse(q.since)) ? new Date(q.since) : null;
     const rows = await withTenant(db, company(req), (tx) => tx.select().from(schema.driverLocations)
       .where(and(eq(schema.driverLocations.routeId, routeId), since ? gte(schema.driverLocations.recordedAt, since) : undefined))
-      .orderBy(asc(schema.driverLocations.recordedAt)).limit(limit));
-    return rows.map(dto);
+      // os pontos MAIS RECENTES (numa viagem longa, os antigos ficam de fora), devolvidos em ordem de tempo
+      .orderBy(desc(schema.driverLocations.recordedAt)).limit(limit));
+    return rows.reverse().map(dto);
   });
 }

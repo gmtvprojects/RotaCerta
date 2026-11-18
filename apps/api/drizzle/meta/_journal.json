@@ -50,6 +50,13 @@
       "when": 1793917000000,
       "tag": "0006_multiempresa",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795010700329,
+      "tag": "0007_volatile_shadow_king",
+      "breakpoints": true
     }
   ]
 }
