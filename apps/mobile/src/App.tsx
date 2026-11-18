@@ -2,6 +2,9 @@ import { IonApp, IonContent, IonIcon, IonLabel, IonPage, IonRouterOutlet, IonTab
 import { IonReactRouter } from '@ionic/react-router';
 import { homeOutline, navigateOutline, cubeOutline, personOutline, optionsOutline } from 'ionicons/icons';
 import { Navigate, Route } from 'react-router-dom';
+import { activeRoute } from '@rotacerta/domain';
+import { useDriverBeacon } from './location';
+import { usePrefs } from './prefs';
 import { useSession } from './session';
 import { Login } from './pages/Login';
 import { Inicio } from './pages/Inicio';
@@ -13,6 +16,10 @@ import { Ajustes } from './pages/Ajustes';
 
 /** Navegação do app: abas inferiores (barra de 64px do Rota) com a viagem no meio. */
 function Tabs() {
+  const { data, driverId } = useSession();
+  const prefs = usePrefs();
+  const active = data ? activeRoute(data, driverId) : undefined;
+  useDriverBeacon(active?.status === 'active' ? active.id : null, prefs.shareLocation, prefs.keepAwake);
   return (
     <IonTabs>
       <IonRouterOutlet>

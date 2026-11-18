@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { Client, Order } from '@rotacerta/domain';
 import { call } from '../app/api';
 import { useStore } from '../app/store';
 import { OrderDetail } from './OrderDetail';
 import { Header, Modal, OrderPill } from './ui';
+import { ListSkeleton, SkeletonLines } from './Skeletons';
 import { Icon } from '../app/icons';
 import { Item, Stagger } from '../app/motion';
 
@@ -17,9 +19,15 @@ export function Clientes() {
   const { data } = useStore();
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
-  const [result, setResult] = useState<Search>({ items: [], total: 0 });
+  const [result, setResult] = useState<Search | null>(null);
   const [error, setError] = useState('');
   const [open, setOpen] = useState<number | null>(null);
+  // vindo da busca do topo (?cliente=ID): abre o cadastro direto
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const id = Number(params.get('cliente'));
+    if (id) { setOpen(id); setParams({}, { replace: true }); }
+  }, [params, setParams]);
 
   const load = useCallback(() => {
     const url = `/clients?q=${encodeURIComponent(q)}&limit=${PAGE}&offset=${page * PAGE}`;
@@ -28,7 +36,7 @@ export function Clientes() {
   // espera a pessoa terminar de digitar; recarrega também quando os dados mudam (outro aparelho, nova entrega)
   useEffect(() => { const t = setTimeout(() => void load(), 250); return () => clearTimeout(t); }, [load, data]);
 
-  const pages = Math.max(1, Math.ceil(result.total / PAGE));
+  const pages = Math.max(1, Math.ceil((result?.total ?? 0) / PAGE));
 
   return (
     <>
@@ -38,8 +46,8 @@ export function Clientes() {
         </label>} />
       {error && <p className="error" role="alert">{error}</p>}
       <section className="card rt-panel" aria-label="Clientes">
-        <div className="rt-panel-head"><h2>{result.total} cliente(s)</h2><span className="muted small">página {page + 1} de {pages}</span></div>
-        {result.items.length === 0 ? <p className="rt-empty">Nenhum cliente encontrado.</p> : (
+        <div className="rt-panel-head"><h2>{result ? `${result.total} cliente(s)` : 'Clientes'}</h2><span className="muted small">página {page + 1} de {pages}</span></div>
+        {result === null ? <ListSkeleton rows={6} /> : result.items.length === 0 ? <p className="rt-empty">Nenhum cliente encontrado.</p> : (
           <Stagger as="ul" className="rt-rows" key={`${q}|${page}`} count={result.items.length}>
             {result.items.map((c) => (
               <Item as="li" key={c.id}>
@@ -83,7 +91,7 @@ function ClientDialog({ id, onClose, onChanged }: { id: number; onClose: () => v
     return () => clearTimeout(t);
   }, [mergeQ, id]);
 
-  if (!client || !form) return <Modal title="Cliente" onClose={onClose}>{error ? <p className="error" role="alert">{error}</p> : <p className="muted">Carregando…</p>}</Modal>;
+  if (!client || !form) return <Modal title="Cliente" onClose={onClose}>{error ? <p className="error" role="alert">{error}</p> : <SkeletonLines lines={6} />}</Modal>;
   const set = <K extends keyof Client>(k: K, v: Client[K]) => setForm((s) => (s ? { ...s, [k]: v } : s));
 
   const save = async () => {

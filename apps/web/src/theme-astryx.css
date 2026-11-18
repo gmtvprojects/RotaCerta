@@ -1,0 +1,424 @@
+/*
+ * Ponte para o Astryx. As telas que ainda usam as classes antigas (.card, .pill, tabelas…) passam a ler
+ * as cores, a fonte, os raios e as sombras dos tokens do Astryx (tema "neutral"), então o app inteiro
+ * ganha o mesmo visual: cinzas quentes, Figtree, cantos de 12/16 px, sombras discretas e preto como cor de ação.
+ * Conforme cada tela migra para componentes do Astryx, o que sobra aqui diminui.
+ */
+:root, .shell, .modal, .palette {
+  --display: var(--font-family-heading, 'Figtree Variable'), system-ui, sans-serif;
+  --body: var(--font-family-body, 'Figtree Variable'), system-ui, sans-serif;
+  --mono: var(--font-family-code, ui-monospace), ui-monospace, Consolas, monospace;
+  --serif: var(--font-family-body, 'Figtree Variable'), system-ui, sans-serif;
+}
+.shell, .modal, .palette {
+  --bg: var(--color-background-body); --card: var(--color-background-card); --sunk: color-mix(in srgb, var(--color-text-primary) 5%, var(--color-background-card));
+  --ink: var(--color-text-primary); --muted: var(--color-text-secondary); --line: var(--color-border);
+  /* cada cor semântica = o par texto/fundo suave que o Badge do Astryx usa, para tudo combinar */
+  --brand: var(--color-text-info); --brand-soft: var(--color-background-blue);
+  --accent: var(--color-accent); --accent-ink: var(--color-background-body); --link: var(--color-text-info);
+  --green: var(--color-text-green); --red: var(--color-text-red); --amber: var(--color-text-orange); --violet: var(--color-text-purple);
+  --ok-soft: var(--color-background-green); --danger-soft: var(--color-background-red);
+  --amber-soft: var(--color-background-orange); --violet-soft: var(--color-background-purple); --gray-soft: var(--color-background-gray);
+  --grad-a: var(--color-accent); --grad-b: var(--color-accent);
+  --out-bg: var(--color-accent); --out-ink: var(--color-background-body);
+  --hero-btn: var(--color-background-card); --hero-sub: var(--color-text-secondary);
+  --avatar-bg: var(--sunk); --avatar-ink: var(--color-text-primary);
+  --deep: var(--color-background-surface); --deep-2: var(--color-background-surface); --on-deep: var(--color-text-secondary);
+  --r-md: var(--radius-element, 12px); --r-lg: var(--radius-container, 16px);
+  --shadow: var(--shadow-low, 0 1px 3px rgba(0, 0, 0, .1));
+}
+body:has(.shell) { background: var(--color-background-body, #f1f1f1); }
+body { font-family: var(--font-family-body, 'Figtree Variable'), system-ui, sans-serif; }
+
+/* Barra de baixo no visual do Astryx: superfície clara, borda fina e sombra; a tela atual em cinza, a ação principal em preto */
+.shell .dock { background: var(--color-background-surface); box-shadow: var(--shadow-high, 0 8px 24px rgba(0, 0, 0, .16)), inset 0 0 0 1px var(--color-border); }
+.shell .dock a, .shell .dock button { color: var(--color-text-secondary); }
+.shell .dock a:hover, .shell .dock button:hover, .shell .dock .active { color: var(--color-text-primary); }
+.shell .dock .dock-pill { background: var(--sunk); box-shadow: none; }
+.shell .dock .dock-act { background: var(--color-accent); color: var(--color-background-body); }
+.shell .dock .dock-act:hover { color: var(--color-background-body); }
+.shell .dock kbd { border-color: var(--color-border); color: var(--color-text-secondary); }
+@media (min-width: 901px) { .shell.nav-side .main { padding-bottom: 48px; } .shell.nav-side.with-tour .main { padding-bottom: 150px; } .shell.nav-side .tour-bar { bottom: 16px; } }
+.shell .main { max-width: 1180px; }
+
+/* Dentro do Dialog do Astryx: o contêiner .modal só empresta as variáveis e os estilos dos campos; quem desenha a janela é o Astryx */
+.modal.flat { padding: 0; max-width: none; max-height: none; overflow: visible; background: none; box-shadow: none; border-radius: 0; }
+.modal.flat .modal-body { margin: 0; padding: 16px 0; }
+.modal.flat .modal-foot { padding: 12px 0 0; border-top: 1px solid var(--line); }
+.modal-icon { width: 32px; height: 32px; margin: 0 8px 0 0; }
+
+/* Dock: sem o azul antigo */
+.shell .dock { border: 1px solid var(--color-border); }
+.shell .dock .dock-act { box-shadow: none; }
+
+/* ---- Cores: selos, indicadores e barras no mesmo par texto/fundo do Badge ---- */
+.shell .pill { background: var(--gray-soft); color: var(--color-text-gray); }
+.shell .pill.blue { background: var(--brand-soft); color: var(--brand); }
+.shell .pill.violet { background: var(--violet-soft); color: var(--violet); }
+.shell .pill.green { background: var(--ok-soft); color: var(--green); }
+.shell .pill.red { background: var(--danger-soft); color: var(--red); }
+.shell .pill.amber { background: var(--amber-soft); color: var(--amber); }
+.shell .next .pill.blue, .shell .next .pill.violet { background: var(--brand-soft); color: var(--brand); }
+.rt-state.amber, .rt-dot.amber { background: var(--amber-soft); color: var(--amber); }
+.shell .rt-legend i.green { background: var(--color-success); } .shell .rt-legend i.amber { background: var(--color-warning); } .shell .rt-legend i.gray { background: var(--color-text-secondary); }
+
+/* Destaques (card "próxima ação" e tile principal): preto/branco do Astryx, sem verde nem azul chapado */
+.shell .tile.primary, .shell .next { background: var(--color-accent); color: var(--color-background-body); }
+.shell .tile.primary span, .shell .next .eyebrow, .shell .next .muted { color: color-mix(in srgb, var(--color-background-body) 70%, transparent); }
+.shell .next button:not(.primary):not(.danger) { background: color-mix(in srgb, var(--color-background-body) 14%, transparent); color: var(--color-background-body); border-color: transparent; }
+.shell .next button.primary { background: var(--color-background-body); color: var(--color-accent); }
+.shell .next button.danger { background: none; color: var(--color-background-body); border-color: color-mix(in srgb, var(--color-background-body) 45%, transparent); }
+
+/* Barras de progresso e avatar: cor de ação (neutra) */
+.shell .rt-flow i b, .shell .bar-track i, .shell .flow-step i b { background: var(--color-accent); }
+.shell .avatar { background: var(--sunk); color: var(--color-text-primary); }
+
+/* Logo: marca na cor de ação do tema */
+.shell .logo-bg { fill: var(--color-accent); }
+.shell .logo path { stroke: var(--color-background-body); }
+.shell .logo circle:not(.logo-dot) { fill: var(--color-background-body); }
+.shell .logo-dot { fill: #19c58a; }
+
+/* Abas (TabList do Astryx): espaço abaixo e rolagem sem barra visível */
+.tabs-row { margin: 4px 0 16px; overflow-x: auto; }
+
+/* Linha de lista em hover: só o fundo muda (sem a borda preta do botão) */
+.shell button.rt-row:hover, .shell a.rt-row:hover, .shell .m-row:hover { border-color: var(--line); }
+
+/* Seletor de paleta */
+.palette-options { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 12px; }
+.palette-option { position: relative; display: flex; align-items: center; gap: 8px; padding: 8px 14px 8px 10px; border: 2px solid var(--line); border-radius: 999px; background: var(--card); cursor: pointer; font-weight: 500; }
+.palette-option.on { border-color: var(--color-accent); }
+.palette-option input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.palette-option i { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15); }
+.palette-option:has(input:focus-visible) { outline: 3px solid var(--color-accent); outline-offset: 2px; }
+
+/* Setas/rotas animadas ao fundo: discretas, entre os cartões (o canvas fica acima do fundo da casca e abaixo do conteúdo) */
+.shell .main { isolation: isolate; }
+.shell .ambient-routes { z-index: -1; opacity: .5; }   /* atrás do conteúdo do .main (que isola o empilhamento), acima do fundo da casca */
+
+/* Cartão de destaque (azul): textos legíveis sobre o fundo de ação */
+.shell .next, .shell .next h2, .shell .next p { color: var(--color-background-body); }
+.shell .next .muted, .shell .next .eyebrow, .shell .next p.muted { color: color-mix(in srgb, var(--color-background-body) 78%, transparent); }
+.shell .next button.primary { color: var(--color-accent); }
+.shell .tile.primary, .shell .tile.primary strong, .shell .tile.primary span { color: var(--color-background-body); }
+
+/* Cartão de destaque da tela de atendimento (.rt-hero): cor de ação, textos legíveis e botão no azul do tema */
+.shell .rt-hero { background: var(--color-accent); color: var(--color-background-body); }
+.shell .rt-hero span:not(.rt-badge) { color: color-mix(in srgb, var(--color-background-body) 80%, transparent); }
+.shell .rt-badge { background: color-mix(in srgb, var(--color-background-body) 22%, transparent); color: var(--color-background-body); }
+.shell .btn.rt-hero-btn { background: var(--color-background-body); color: var(--color-accent); }
+.shell .rt-hero-bar i { background: var(--color-background-body); }
+.shell .rt-hero .rt-badge { color: var(--color-background-body); }
+
+/* Configurações: hub de cartões */
+.conf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+.shell .conf-tile { display: grid; gap: 10px; justify-items: start; text-align: left; height: auto; min-height: 0; padding: 18px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); cursor: pointer; transition: border-color .15s, background-color .15s; }
+.shell .conf-tile:hover { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 4%, var(--card)); }
+.conf-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+.conf-tile b { font-size: 15px; font-weight: 650; }
+.conf-sum { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 4px; color: var(--muted); }
+.shell .conf-back { margin-bottom: 14px; min-height: 0; height: 32px; padding: 0 12px 0 8px; border-color: transparent; background: none; color: var(--muted); font-weight: 600; }
+.shell .conf-back:hover { background: var(--sunk); color: var(--ink); }
+.conf-back .icon { transform: rotate(180deg); }
+.shell .conf-tile { grid-template-columns: 100%; justify-content: stretch; align-content: start; }
+.shell table .actions { display: flex; gap: 6px; justify-content: flex-end; }
+.shell table .actions button { min-height: 32px; height: 32px; padding: 0 12px; font-size: 13px; }
+
+/* Atendimento: tela única (busca de cliente, cadastro em blocos, fila ao lado) */
+.bal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.bal-stats .rt-stat { flex-direction: row; align-items: baseline; justify-content: space-between; padding: 12px 16px; }
+.bal-stats .rt-stat b { order: 3; font-size: 26px; line-height: 32px; }
+.bal-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 20px; align-items: start; }
+.bal-queue { position: sticky; top: 20px; }
+.bal-search { position: relative; margin-bottom: 10px; }
+.bal-search span { position: absolute; left: 16px; top: 50%; transform: translateY(-52%); font-size: 20px; color: var(--muted); pointer-events: none; }
+.shell .bal-search input { height: 52px; padding-left: 46px; border-radius: 16px; font-size: 16px; }
+.bal-step { padding: 16px 0 4px; border-top: 1px solid var(--line); margin-top: 14px; }
+.bal-step-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.bal-step-head h3 { margin: 0; }
+.bal-n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--sunk); color: var(--muted); flex: none; }
+.bal-n.ok { background: var(--ok-soft); color: var(--green); }
+.bal-address { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--sunk); flex-wrap: wrap; }
+.bal-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.bal-line:first-of-type { border-top: 0; }
+.bal-line > div { display: grid; }
+.bal-recent { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.bal-links { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-weight: 600; color: var(--link); }
+.bal-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.bal-cols h3 { margin: 0; }
+.bal-kcard { display: grid; gap: 4px; justify-items: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card); margin-bottom: 8px; }
+@media (max-width: 1100px) { .bal-grid { grid-template-columns: 1fr; } .bal-queue { position: static; } .bal-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .bal-stats { grid-template-columns: 1fr; } .bal-cols { grid-template-columns: 1fr; } }
+.bal-form .card-head .actions { display: flex; align-items: center; gap: 10px; }
+.shell .bal-search input { width: 100%; }
+.shell .btn.sm { min-height: 32px; height: 32px; padding: 0 12px; font-size: 13px; }
+
+/* Agentes de IA */
+.ag-stats { margin-top: 4px; }
+.ag-stats .rt-stat b small { font-size: 14px; font-weight: 500; }
+.ag-empty h2 { margin-bottom: 6px; }
+.ag-empty .conf-grid { margin-top: 16px; }
+.shell .ag-tile { cursor: default; }
+.ag-tile .actions { display: flex; gap: 8px; margin-top: 6px; }
+.ag-templates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 14px; border-radius: var(--r-md); background: var(--sunk); margin-bottom: 8px; }
+.ag-section { display: flex; align-items: center; gap: 10px; margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.ag-section h3 { margin: 0; }
+.ag-tools { display: grid; gap: 6px; margin-bottom: 10px; }
+.ag-tool { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md); cursor: pointer; }
+.ag-tool:has(input:checked) { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 5%, var(--card)); }
+.ag-tool input { margin-top: 3px; }
+.ag-tool > span { display: grid; gap: 2px; }
+.ag-kb { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md); margin-bottom: 8px; justify-items: start; }
+.shell .ag-kb input, .shell .ag-kb textarea, .modal .ag-kb input, .modal .ag-kb textarea { width: 100%; }
+.modal-foot .grow { flex: 1; }
+/* Conversa com o agente: ocupa a altura da tela; a conversa rola e a caixa de texto fica fixa embaixo */
+.ag-page { --chat-offset: 120px; display: flex; flex-direction: column; height: calc(100dvh - var(--chat-offset)); min-height: 420px; }
+.shell.nav-dock .ag-page { --chat-offset: 200px; }
+@media (max-width: 900px) { .ag-page { --chat-offset: 190px; } }
+.ag-top { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.ag-title { display: grid; min-width: 0; }
+.ag-title h1 { font-size: 18px; line-height: 24px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-top .grow { flex: 1; }
+.shell .ag-icon-btn { width: 36px; height: 36px; min-height: 0; padding: 0; border-radius: 10px; border-color: transparent; background: none; color: var(--muted); }
+.shell .ag-icon-btn:hover { background: var(--sunk); color: var(--ink); }
+.ag-icon-btn .icon { transform: rotate(180deg); }
+.shell .ag-ghost { min-height: 0; height: 34px; padding: 0 12px; gap: 6px; border-radius: 10px; border-color: var(--line); background: var(--card); font-size: 13px; font-weight: 600; color: var(--ink); }
+.shell .ag-ghost:hover:not(:disabled) { background: var(--sunk); border-color: var(--line); }
+.shell .ag-ghost.sm { height: 26px; padding: 0 8px; border-color: transparent; background: none; color: var(--muted); font-size: 12px; }
+.shell .ag-ghost.sm:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }
+.ag-avatar { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; flex: none; font-weight: 700; background: var(--color-accent); color: var(--color-background-body); }
+.ag-avatar.sm { width: 28px; height: 28px; border-radius: 9px; font-size: 13px; }
+.ag-avatar.lg { width: 56px; height: 56px; border-radius: 18px; font-size: 24px; }
+
+.ag-chat { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ag-log { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 4px 12px; }
+.ag-column { width: 100%; max-width: 780px; margin: 0 auto; display: grid; gap: 18px; }
+
+.ag-hello { display: grid; justify-items: center; text-align: center; gap: 6px; padding: 6vh 0 12px; }
+.ag-hello h2 { font-size: 22px; line-height: 28px; margin: 10px 0 0; }
+.ag-suggest { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; margin-top: 18px; }
+.shell .ag-card { display: grid; gap: 4px; justify-items: start; text-align: left; height: auto; min-height: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); font-weight: 400; }
+.shell .ag-card:hover { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 4%, var(--card)); }
+.ag-card b { font-size: 13px; font-weight: 650; color: var(--ink); }
+.ag-card span { font-size: 13.5px; color: var(--muted); line-height: 1.4; }
+
+.ag-row { display: flex; gap: 12px; align-items: flex-start; }
+.ag-row.user { flex-direction: column; align-items: flex-end; gap: 4px; }
+.ag-row.user .ag-bubble { max-width: min(560px, 85%); padding: 10px 14px; border-radius: 18px 18px 6px 18px; background: var(--color-accent); color: var(--color-background-body); white-space: pre-wrap; line-height: 1.5; overflow-wrap: anywhere; }
+.ag-answer { flex: 1; min-width: 0; display: grid; gap: 8px; padding-top: 3px; }
+.ag-meta { font-size: 11.5px; color: var(--muted); }
+.ag-actions { display: flex; align-items: center; gap: 4px; }
+.ag-error { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--danger-soft); color: var(--red); }
+
+.ag-steps { justify-self: start; border: 1px solid var(--line); border-radius: 10px; background: var(--card); font-size: 12.5px; }
+.ag-steps summary { display: flex; align-items: center; gap: 6px; padding: 5px 10px; cursor: pointer; color: var(--muted); list-style: none; }
+.ag-steps summary::-webkit-details-marker { display: none; }
+.ag-steps summary::after { content: '\25BE'; font-size: 10px; }
+.ag-steps[open] summary::after { content: '\25B4'; }
+.ag-steps ul { margin: 0; padding: 0 12px 8px 30px; display: grid; gap: 2px; color: var(--ink); }
+.ag-steps li { list-style: none; } .ag-steps li.bad { color: var(--red); }
+
+.ag-thinking { display: flex; align-items: center; gap: 10px; padding-top: 5px; color: var(--muted); font-size: 13.5px; }
+.ag-dots { display: inline-flex; gap: 4px; }
+.ag-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent); animation: ag-dot 1s infinite ease-in-out; }
+.ag-dots i:nth-child(2) { animation-delay: .15s; } .ag-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes ag-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .ag-dots i { animation: none; opacity: .7; } }
+
+.ag-composer { padding: 10px 4px 0; }
+.ag-box { display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 16px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); box-shadow: 0 6px 24px -14px rgba(10, 26, 60, .35); transition: border-color .12s; }
+.ag-box:focus-within { border-color: var(--color-accent); }
+.shell .ag-box textarea { flex: 1; min-height: 24px; max-height: 168px; padding: 8px 0; border: 0; outline: 0; background: none; resize: none; font-size: 15px; line-height: 1.5; box-shadow: none; }
+.shell .ag-box textarea:focus { outline: none; }
+.shell .ag-send { width: 40px; height: 40px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: var(--color-accent); color: var(--color-background-body); flex: none; }
+.shell .ag-send .icon { transform: rotate(-90deg); }
+.shell .ag-send:disabled { opacity: .35; cursor: default; }
+.ag-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin: 6px 4px 0; font-size: 11.5px; color: var(--muted); }
+
+/* Respostas formatadas */
+.md { display: grid; gap: 8px; line-height: 1.6; overflow-wrap: anywhere; }
+.md p, .md ul, .md ol { margin: 0; }
+.md ul, .md ol { padding-left: 20px; display: grid; gap: 3px; }
+.md .md-h { font-weight: 700; margin-top: 4px; }
+.md code { padding: 1px 6px; border-radius: 6px; background: var(--sunk); font-size: .9em; }
+.md-table { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+.md-table table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.md-table th, .md-table td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+.md-table tr:last-child td { border-bottom: 0; }
+.md-table th { background: var(--sunk); font-weight: 600; }
+@media (max-width: 720px) { .ag-suggest { grid-template-columns: 1fr; } }
+
+/* Rastreio público do cliente */
+.track-public { min-height: 100dvh; background: var(--bg); }
+.track-public-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); background: var(--card); }
+.track-public-main { max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 16px; }
+.track-public-main h1 { font-size: 22px; line-height: 28px; margin: 6px 0 8px; }
+.track-steps { list-style: none; padding: 0; margin: 16px 0 12px; display: grid; gap: 10px; }
+.track-steps li { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.track-steps li span { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--sunk); font-weight: 700; font-size: 12px; flex: none; }
+.track-steps li.ok { color: var(--ink); } .track-steps li.ok span { background: var(--ok-soft); color: var(--green); }
+.track-steps li.cur { color: var(--ink); font-weight: 650; } .track-steps li.cur span { background: var(--color-accent); color: var(--color-background-body); }
+.track-public-map .track-map { height: 320px; border-radius: var(--r-md); overflow: hidden; margin-bottom: 8px; }
+.track-link { display: grid; gap: 6px; justify-items: start; padding: 10px 12px; border: 1px dashed var(--line); border-radius: var(--r-md); margin-bottom: 12px; }
+.track-link input { width: 100%; font-size: 12.5px; }
+
+/* Mapa de acompanhamento: trilha na cor do tema e botão "ver todos" sobre o mapa */
+.shell .track-map { color: var(--color-accent); }   /* a trilha usa esta cor */
+.track-map-wrap { position: relative; }
+.shell .track-fit { position: absolute; top: 10px; right: 10px; z-index: 500; min-height: 34px; height: 34px; padding: 0 12px; font-size: 13px; box-shadow: var(--shadow); }
+
+.shell .main:has(.ag-page) { padding-bottom: 16px; }
+
+.md ul { list-style: disc; } .md ol { list-style: decimal; } .md li { padding-left: 2px; }
+.md li::marker { color: var(--muted); }
+.shell .ag-card { grid-template-columns: 100%; justify-content: stretch; align-content: start; }
+@media (max-width: 720px) {
+  .ag-top { flex-wrap: nowrap; gap: 8px; padding-bottom: 10px; }
+  .ag-desc, .ag-label, .ag-hint { display: none; }
+  .shell .ag-ghost { width: 34px; padding: 0; justify-content: center; }
+  .ag-title h1 { font-size: 16px; }
+  .ag-column { gap: 14px; }
+}
+
+/* ---------- Acompanhamento ao vivo ---------- */
+.trk-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.trk-head h1 { margin: 4px 0 4px; font-size: 26px; line-height: 32px; }
+.trk-live { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.trk-live small { font-weight: 500; opacity: .8; }
+.trk-live i { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+.trk-live.green { background: var(--ok-soft); color: var(--green); }
+.trk-live.green i { animation: trk-pulse 1.6s ease-out infinite; }
+.trk-live.amber { background: var(--amber-soft); color: var(--amber); }
+.trk-live.red { background: var(--sunk); color: var(--muted); }
+@keyframes trk-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); } 100% { box-shadow: 0 0 0 9px transparent; } }
+
+.trk-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.trk-map-card { position: relative; padding: 10px; }
+.trk-map-card .track-map { height: min(68vh, 620px); border-radius: 12px; overflow: hidden; }
+.trk-map-tools { position: absolute; top: 20px; left: 62px; z-index: 500; display: flex; gap: 8px; }
+.shell .trk-map-tools button { min-height: 0; height: 34px; padding: 0 12px; gap: 6px; font-size: 13px; background: var(--card); box-shadow: var(--shadow); }
+.shell .trk-map-tools button.on { background: var(--color-accent); color: var(--color-background-body); border-color: transparent; }
+.trk-map-card .rt-legend { padding: 10px 6px 2px; }
+.trk-map-empty { position: absolute; inset: auto 16px 16px 16px; z-index: 500; display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; background: var(--card); box-shadow: var(--shadow); font-size: 13.5px; }
+.trk-map-empty span { color: var(--muted); }
+
+.trk-side { display: grid; gap: 12px; }
+.trk-side .card { margin: 0; }
+.trk-list { display: grid; gap: 4px; }
+.trk-list .card-head { margin-bottom: 6px; }
+.shell .trk-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; height: auto; min-height: 0; padding: 8px 10px; border: 1px solid transparent; border-radius: 12px; background: none; text-align: left; font-weight: 400; }
+.shell .trk-row:hover { background: var(--sunk); border-color: transparent; }
+.shell .trk-row.sel { background: color-mix(in srgb, var(--color-accent) 8%, var(--card)); border-color: color-mix(in srgb, var(--color-accent) 40%, transparent); }
+.trk-row .avatar { width: 34px; height: 34px; font-size: 12px; }
+.trk-row-main { display: grid; min-width: 0; }
+.trk-row-main b, .trk-row-main span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trk-age { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.trk-age i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.trk-age.green { color: var(--green); } .trk-age.amber { color: var(--amber); } .trk-age.red { color: var(--muted); }
+
+.trk-driver { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
+.trk-driver-main { display: grid; }
+.trk-metrics { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.trk-metrics span { display: grid; padding: 8px 12px; border-radius: 10px; background: var(--sunk); }
+.trk-metrics b { font-size: 20px; line-height: 26px; }
+.trk-metrics small { color: var(--muted); font-size: 12px; }
+.trk-sim { display: grid; gap: 8px; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 12px; }
+
+/* marcador do motorista */
+.trk-marker { position: relative; display: grid; place-items: center; width: 44px; height: 44px; }
+.trk-dot { position: relative; z-index: 1; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 11px/1 var(--body); color: #fff; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+.trk-marker.green .trk-dot { background: #198100; } .trk-marker.amber .trk-dot { background: #c66a00; } .trk-marker.red .trk-dot { background: #8a93a6; }
+.trk-marker.sel .trk-dot { width: 34px; height: 34px; box-shadow: 0 0 0 4px rgba(27, 79, 216, .35), 0 2px 10px rgba(0, 0, 0, .35); }
+.trk-marker.green.sel::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: rgba(25, 129, 0, .25); animation: trk-ring 1.8s ease-out infinite; }
+@keyframes trk-ring { 0% { transform: scale(.6); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+.trk-arrow { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.trk-arrow::before { content: ''; position: absolute; left: 50%; top: -1px; transform: translateX(-50%); border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 11px solid #1b4fd8; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .4)); }
+@media (prefers-reduced-motion: reduce) { .trk-live.green i, .trk-marker.green.sel::before { animation: none; } }
+
+/* vazio */
+.trk-empty { display: grid; justify-items: center; text-align: center; gap: 8px; padding: 40px 24px; }
+.trk-empty-ico { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+.trk-empty p { max-width: 56ch; }
+.trk-waiting { width: 100%; max-width: 560px; display: grid; gap: 6px; margin-top: 12px; text-align: left; }
+.trk-wait-row { display: grid; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; }
+
+@media (max-width: 1100px) { .trk-grid { grid-template-columns: 1fr; } .trk-map-card .track-map { height: 52vh; } }
+
+/* ---------- Esqueletos de carregamento (Skeleton do Astryx) ---------- */
+.sk-lines, .sk-list, .sk-col { display: grid; }
+.sk-col { gap: 8px; min-width: 0; }
+.sk-list { gap: 4px; }
+.sk-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.sk-row:first-child { border-top: 0; }
+.sk-table { display: grid; gap: 16px 18px; padding: 6px 2px; }
+.sk-stats { display: grid; gap: 14px; }
+.sk-card { display: grid; gap: 10px; align-content: start; }
+.sk-head { display: grid; gap: 10px; margin-bottom: 22px; }
+.sk-page { display: grid; gap: 16px; }
+.sk-page .sk-head { margin-bottom: 6px; }
+.sk-page .card { margin: 0; }
+.sk-split { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.sk-split.wide { grid-template-columns: minmax(0, 1fr) 360px; }
+.sk-form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+/* app inteiro (abertura) */
+.sk-app { display: grid; grid-template-columns: 256px minmax(0, 1fr); min-height: 100dvh; background: var(--bg); }
+.sk-side { display: grid; align-content: start; gap: 14px; padding: 18px 14px; }
+.sk-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.sk-nav { display: grid; grid-template-columns: 18px 1fr; align-items: center; gap: 12px; padding: 4px 8px; }
+.sk-main { display: grid; grid-template-rows: auto 1fr; }
+.sk-top { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 12px 20px; }
+.sk-content { background: var(--card); border-radius: 32px 0 0 0; padding: 32px 40px; }
+
+@media (max-width: 900px) {
+  .sk-app { grid-template-columns: 1fr; } .sk-side { display: none; }
+  .sk-content { border-radius: 0; padding: 20px 16px; }
+  .sk-split, .sk-split.wide, .sk-form { grid-template-columns: 1fr; }
+  .sk-stats { grid-template-columns: 1fr 1fr !important; }
+}
+
+/* cor do esqueleto ligada ao tema (o padrão do Astryx é um cinza fixo, quase invisível no fundo branco e no tema azul).
+   !important porque o estilo do componente fica numa camada acima desta */
+.astryx-skeleton { background-color: color-mix(in srgb, var(--color-text-primary) 9%, var(--color-background-card)) !important; }
+/* pulso próprio, mais visível que o do Astryx (que passa boa parte do tempo com 25% de opacidade); com o estágio
+   (`index`) dos blocos virando um leve escalonamento */
+.astryx-skeleton { animation: sk-pulse 1.5s ease-in-out infinite !important; }
+@keyframes sk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .astryx-skeleton { animation: none !important; } }
+
+/* Busca no centro da barra superior (vale para o menu lateral e para a barra embaixo) */
+.shell .top-search { display: flex; align-items: center; gap: 10px; width: min(460px, 42vw); height: 38px; min-height: 0; padding: 0 8px 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--muted); font-weight: 400; font-size: 14px; box-shadow: 0 1px 2px rgba(10, 26, 60, .06); cursor: text; }
+.shell .top-search:hover:not(:disabled) { border-color: color-mix(in srgb, var(--color-accent) 45%, var(--line)); color: var(--ink); }
+.top-search-text { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-search kbd { flex: none; font-size: 11px; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--line); background: var(--sunk); color: var(--muted); }
+@media (max-width: 720px) {
+  .shell .top-search { width: 40px; height: 36px; padding: 0; justify-content: center; border-radius: 50%; }
+  .top-search-text, .top-search kbd { display: none; }
+}
+
+/* Barra de baixo: botão "Telas" abre todas as telas do perfil */
+.dock-sheet-back { position: fixed; inset: 0; z-index: 33; background: rgba(2, 8, 22, .25); }
+.dock-sheet { position: fixed; z-index: 34; left: 50%; transform: translateX(-50%); bottom: calc(92px + env(safe-area-inset-bottom)); width: min(560px, calc(100% - 24px)); max-height: min(60vh, 520px); overflow-y: auto; padding: 16px; border-radius: 22px; background: var(--color-background-surface); border: 1px solid var(--line); box-shadow: var(--shadow-high, 0 12px 40px rgba(0, 0, 0, .25)); animation: dock-sheet-in .18s ease-out; }
+@keyframes dock-sheet-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+@media (prefers-reduced-motion: reduce) { .dock-sheet { animation: none; } }
+.dock-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.dock-sheet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.dock-tile { display: grid; justify-items: center; gap: 6px; padding: 12px 6px; border-radius: 14px; color: var(--ink); text-align: center; font-size: 12.5px; font-weight: 600; text-decoration: none; }
+.dock-tile:hover { background: var(--sunk); }
+.dock-tile.active { background: color-mix(in srgb, var(--color-accent) 10%, var(--card)); color: var(--color-accent); }
+.dock-tile-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+.shell .dock button.active { color: var(--color-text-primary); background: var(--sunk); }
+@media (min-width: 901px) { .shell.nav-side .dock-sheet, .shell.nav-side .dock-sheet-back { display: none; } }
+
+@media (max-width: 720px) {
+  .dock-sheet-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .dock-tile { padding: 10px 2px; font-size: 11.5px; }
+  .dock-sheet { bottom: calc(88px + env(safe-area-inset-bottom)); }
+}
+/* barra de baixo com 6 itens no celular: a ação principal fica só com o ícone (o nome vai no aria-label) */
+@media (max-width: 440px) {
+  .shell .dock .dock-act span { display: none; }
+  .shell .dock .dock-act { flex: .9; }
+  .shell .dock a, .shell .dock button { font-size: 10px; }
+}

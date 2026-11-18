@@ -1,7 +1,7 @@
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { BOX_TYPE_LABELS, routeOrders, type BoxType } from '@rotacerta/domain';
 import { useStore } from '../app/store';
-import { Empty, Header } from './ui';
+import { Empty, Header, Tabs } from './ui';
 
 /** Etiquetas das caixas de uma carga: número permanente + etiqueta removível da compra atual. */
 export function Etiquetas() {
@@ -24,12 +24,7 @@ export function Etiquetas() {
           <button type="button" className="primary" disabled={labels.length === 0} onClick={() => window.print()}>Imprimir etiquetas</button>
           <Link className="btn" to="/carregamento">Voltar</Link>
         </>} />
-      <div className="chips">
-        <button type="button" className={!only ? 'chip on' : 'chip'} onClick={() => setParams({})}>Todos os pedidos</button>
-        {orders.map((o) => (
-          <button key={o.id} type="button" className={only === o.id ? 'chip on' : 'chip'} onClick={() => setParams({ pedido: String(o.id) })}>#{o.id}</button>
-        ))}
-      </div>
+      <Tabs value={only ? String(only) : ''} onChange={(v) => setParams(v ? { pedido: v } : {})} label="Pedido" items={[{ value: '', label: 'Todos os pedidos' }, ...orders.map((o) => ({ value: String(o.id), label: `#${o.id}` }))]} />
       {labels.length === 0 ? <section className="card"><Empty>Nenhuma caixa para etiquetar.</Empty></section> : (
         <div className="labels">
           {labels.map(({ code, order: o, stop, info }) => {

@@ -1,67 +1,76 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { ORDER_STATUS_LABELS, ROUTE_STATUS_LABELS, type Order, type Route } from '@rotacerta/domain';
 import { Icon, type IconName } from '../app/icons';
-import { SlideUpText } from '../app/SlideUpText';
-import { AnimatePresence, motion } from 'motion/react';
-import { Dialog } from '@base-ui/react/dialog';
-import { BOUNCY } from '../app/motion';
+import { Badge, type BadgeProps } from '@astryxdesign/core/Badge';
+import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
+import { Heading } from '@astryxdesign/core/Heading';
+import { Tab, TabList } from '@astryxdesign/core/TabList';
+import { Text } from '@astryxdesign/core/Text';
 
 export function Header({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
     <header className="page-head">
-      <div><h1><SlideUpText>{title}</SlideUpText></h1>{subtitle && <p className="muted">{subtitle}</p>}</div>
+      <div><Heading level={1}>{title}</Heading>{subtitle && <Text color="secondary">{subtitle}</Text>}</div>
       {actions && <div className="actions">{actions}</div>}
     </header>
   );
 }
+
+type BadgeVariant = NonNullable<BadgeProps['variant']>;
 
 const ORDER_TONE: Record<Order['status'], string> = {
   draft: 'gray', awaiting: 'amber', ready: 'blue', queued: 'blue', loading: 'amber',
   released: 'blue', onroute: 'violet', delivered: 'green', failed: 'red', cancelled: 'gray',
 };
 
+/** Cor do selo de estado → variante do Badge do Astryx. */
+const BADGE: Record<string, BadgeVariant> = { gray: 'neutral', amber: 'orange', blue: 'blue', violet: 'purple', green: 'green', red: 'red' };
+
 export const OrderPill = ({ status }: { status: Order['status'] }) => (
-  <span className={`pill ${ORDER_TONE[status]}`}>{ORDER_STATUS_LABELS[status]}</span>
+  <Badge variant={BADGE[ORDER_TONE[status]]} label={ORDER_STATUS_LABELS[status]} />
 );
 
 const ROUTE_TONE: Record<Route['status'], string> = { loading: 'amber', released: 'blue', active: 'violet', finished: 'green' };
 export const RoutePill = ({ status }: { status: Route['status'] }) => (
-  <span className={`pill ${ROUTE_TONE[status]}`}>{ROUTE_STATUS_LABELS[status]}</span>
+  <Badge variant={BADGE[ROUTE_TONE[status]]} label={ROUTE_STATUS_LABELS[status]} />
 );
+
+/** Abas/filtros da tela (TabList do Astryx). `value` vazio é permitido: vira o item "todos". */
+export function Tabs({ value, onChange, items, label }: { value: string; onChange: (value: string) => void; items: Array<{ value: string; label: string }>; label?: string }) {
+  const ALL = '__todos';
+  return (
+    <div className="tabs-row">
+      <TabList value={value === '' ? ALL : value} onChange={(v) => onChange(v === ALL ? '' : v)} aria-label={label}>
+        {items.map((i) => <Tab key={i.value || ALL} value={i.value === '' ? ALL : i.value} label={i.label} />)}
+      </TabList>
+    </div>
+  );
+}
 
 export const Empty = ({ children }: { children: ReactNode }) => <div className="empty">{children}</div>;
 
 /**
- * Janela de diálogo. Base UI cuida do que é difícil (foco preso, Escape, rolagem travada, leitor de tela)
- * e o Motion anima entrada e saída. Quem chama continua usando `onClose`: ele só roda quando a
- * animação de saída termina; se a tela fechar o modal por conta própria, ele some na hora.
+ * Janela de diálogo (Dialog do Astryx: foco preso, Escape, rolagem travada, leitor de tela e animação já resolvidos).
+ * Quem chama continua usando `onClose`, que roda quando a pessoa fecha pelo X, por Escape ou fora da janela.
  */
-export function Modal({ title, onClose, children, footer, icon, tone = 'info' }: {
+export function Modal({ title, onClose, children, footer, icon, tone = 'info', width = 520 }: {
+  width?: number;
   title: string; onClose: () => void; children: ReactNode; footer?: ReactNode;
-  /** Ícone em círculo acima do título, como nos diálogos do Rota (cancelar, avaliar, filtros). */
+  /** Ícone ao lado do título (cancelar, avaliar, filtros). */
   icon?: IconName; tone?: 'info' | 'danger' | 'success';
 }) {
-  const [open, setOpen] = useState(true);
   return (
-    <Dialog.Root open={open} onOpenChange={(next) => { if (!next) setOpen(false); }}>
-      <AnimatePresence onExitComplete={onClose}>
-        {open && (
-          <Dialog.Portal keepMounted>
-            <Dialog.Backdrop render={<motion.div className="fixed inset-0 z-50 bg-[rgb(2_8_22/.72)]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} />} />
-            <Dialog.Viewport className="fixed inset-0 z-[51] grid place-items-center p-4">
-              <Dialog.Popup render={<motion.div className="modal" aria-label={title}
-                initial={{ opacity: 0, scale: 0.8, y: 60, rotateX: 14 }} animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 30, transition: { duration: 0.14 } }} transition={BOUNCY} />}>
-                {icon && <span className={`modal-icon ${tone}`} aria-hidden="true"><Icon name={icon} size={22} /></span>}
-                <Dialog.Title render={<h2 />}>{title}</Dialog.Title>
-                <div className="modal-body">{children}</div>
-                <div className="modal-foot">{footer}</div>
-              </Dialog.Popup>
-            </Dialog.Viewport>
-          </Dialog.Portal>
-        )}
-      </AnimatePresence>
-    </Dialog.Root>
+    <Dialog isOpen onOpenChange={(open) => { if (!open) onClose(); }} width={width}>
+      <div className="modal flat">
+      <DialogHeader
+        title={title}
+        onOpenChange={(open) => { if (!open) onClose(); }}
+        startContent={icon ? <span className={`modal-icon ${tone}`} aria-hidden="true"><Icon name={icon} size={18} /></span> : undefined}
+      />
+      <div className="modal-body">{children}</div>
+      {footer && <div className="modal-foot">{footer}</div>}
+      </div>
+    </Dialog>
   );
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ApiError, call } from './api';
 
 interface Point { lat: number; lng: number; accuracy?: number; speed?: number; heading?: number; recordedAt: string }
@@ -10,6 +10,25 @@ const SEND_MS = 8_000;
 const MAX_BUFFER = 500;
 
 const finite = (n: number | null | undefined) => (typeof n === 'number' && Number.isFinite(n) ? n : undefined);
+
+/**
+ * Fila de pontos guardada no aparelho: se o app fechar, recarregar ou o celular reiniciar sem sinal, os pontos da
+ * viagem não se perdem e são enviados quando ela volta (o servidor ignora repetidos e recusa pontos com mais de 24 h).
+ */
+const queueKey = (routeId: number) => `rotacerta:gps:${routeId}`;
+function loadQueue(routeId: number): Point[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(queueKey(routeId)) ?? '[]') as Point[];
+    const cutoff = Date.now() - 23 * 3_600_000;
+    return Array.isArray(raw) ? raw.filter((p) => typeof p?.lat === 'number' && Date.parse(p.recordedAt) > cutoff).slice(-MAX_BUFFER) : [];
+  } catch { return []; }
+}
+function saveQueue(routeId: number, points: Point[]) {
+  try {
+    if (points.length) localStorage.setItem(queueKey(routeId), JSON.stringify(points));
+    else localStorage.removeItem(queueKey(routeId));
+  } catch { /* sem armazenamento: fica só na memória */ }
+}
 
 /**
  * Compartilha a posição do motorista enquanto a viagem está ativa e esta tela aberta.
@@ -25,7 +44,7 @@ export function useLocationSharing(routeId: number, enabled: boolean) {
     if (!enabled) return;
     if (!('geolocation' in navigator)) { setState('unsupported'); return; }
 
-    let buffer: Point[] = [];
+    let buffer: Point[] = loadQueue(routeId);
     let sending = false;
     let stopped = false;
     let lastSample = 0;
@@ -38,11 +57,12 @@ export function useLocationSharing(routeId: number, enabled: boolean) {
       try {
         await call('POST', `/routes/${routeId}/locations`, { points: batch });
         buffer = buffer.slice(batch.length);
+        saveQueue(routeId, buffer);
         setLastSent(new Date());
         setState('sharing');
       } catch (e) {
         // viagem encerrada ou rota que não é do motorista: para de coletar
-        if (e instanceof ApiError && (e.status === 403 || e.status === 422)) { stopped = true; setState('stopped'); }
+        if (e instanceof ApiError && (e.status === 403 || e.status === 422)) { stopped = true; saveQueue(routeId, []); setState('stopped'); }
         else setState('error');
       } finally {
         sending = false;
@@ -61,6 +81,7 @@ export function useLocationSharing(routeId: number, enabled: boolean) {
           heading: finite(c.heading), recordedAt: new Date(pos.timestamp || now).toISOString(),
         });
         if (buffer.length > MAX_BUFFER) buffer.shift();
+        saveQueue(routeId, buffer);
         setWaiting(buffer.length);
         if (buffer.length === 1) void flush(); // primeiro ponto sai logo, o painel já mostra o motorista
       },
@@ -68,6 +89,7 @@ export function useLocationSharing(routeId: number, enabled: boolean) {
       { enableHighAccuracy: true, maximumAge: 5_000, timeout: 20_000 },
     );
     const timer = setInterval(() => void flush(), SEND_MS);
+    if (buffer.length) void flush();
 
     // mantém a tela acesa para o navegador continuar recebendo posições (melhor esforço)
     const keepAwake = async () => {
@@ -98,16 +120,33 @@ const MESSAGES: Record<ShareState, string> = {
   stopped: 'Compartilhamento encerrado.',
 };
 
-/** Aviso transparente ao motorista: a posição só é enviada durante a viagem e com esta tela aberta. */
+/* Estado do envio compartilhado entre o "farol" (que roda em qualquer tela) e os avisos das telas. */
+interface Shared { routeId: number | null; state: ShareState; lastSent: Date | null; waiting: number }
+let shared: Shared = { routeId: null, state: 'stopped', lastSent: null, waiting: 0 };
+const listeners = new Set<() => void>();
+const publish = (next: Shared) => { shared = next; listeners.forEach((l) => l()); };
+const useShared = () => useSyncExternalStore((l) => { listeners.add(l); return () => { listeners.delete(l); }; }, () => shared);
+
+/**
+ * Farol do motorista: montado uma vez no app, envia a posição enquanto ele tiver uma viagem em andamento, em QUALQUER
+ * tela (início, romaneio, busca), e não só na tela da viagem. Fora da viagem não coleta nada.
+ */
+export function DriverBeacon({ routeId }: { routeId: number | null }) {
+  const { state, lastSent, waiting } = useLocationSharing(routeId ?? 0, routeId !== null);
+  useEffect(() => { publish({ routeId, state: routeId === null ? 'stopped' : state, lastSent, waiting }); }, [routeId, state, lastSent, waiting]);
+  return null;
+}
+
+/** Aviso transparente ao motorista: a posição é enviada durante a viagem, com o app aberto. */
 export function LocationSharing({ routeId }: { routeId: number }) {
-  const { state, lastSent, waiting } = useLocationSharing(routeId, true);
-  const ok = state === 'sharing' || state === 'starting';
-  const ref = useRef<HTMLDivElement>(null);
+  const { state, lastSent, waiting, routeId: sharing } = useShared();
+  const current = sharing === routeId ? state : 'starting';
+  const ok = current === 'sharing' || current === 'starting';
   return (
-    <div ref={ref} className={`banner ${ok ? 'info' : ''}`} role="status">
+    <div className={`banner ${ok ? 'info' : ''}`} role="status">
       <span>
-        {MESSAGES[state]}
-        {state === 'sharing' && lastSent && <span className="muted small"> · último envio {lastSent.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
+        {MESSAGES[current]}
+        {current === 'sharing' && lastSent && <span className="muted small"> · último envio {lastSent.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
         {waiting > 1 && <span className="muted small"> · {waiting} pontos aguardando envio</span>}
       </span>
     </div>

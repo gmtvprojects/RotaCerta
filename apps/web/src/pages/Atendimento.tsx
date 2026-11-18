@@ -5,15 +5,15 @@ import {
   type BoxInput, type BoxType, type DeliveryForm,
 } from '@rotacerta/domain';
 import { useStore } from '../app/store';
-import { Empty, Header, OrderPill } from './ui';
-import { Counter, Item, Stagger } from '../app/motion';
+import { Empty, Header, Modal, OrderPill } from './ui';
+import { Counter } from '../app/motion';
 import { FichaInicio, FichaModelo, FichaRevisao } from './FichaPapel';
 
 export function Atendimento() {
   return (
     <Routes>
-      <Route index element={<Inicio />} />
-      <Route path="nova" element={<NovaEntrega />} />
+      <Route index element={<Balcao />} />
+      <Route path="nova" element={<Balcao />} />
       <Route path="ficha" element={<FichaInicio />} />
       <Route path="ficha/:paperId" element={<FichaRevisao />} />
       <Route path="modelo" element={<FichaModelo />} />
@@ -37,51 +37,17 @@ function Steps({ current }: { current: 1 | 2 | 3 }) {
   );
 }
 
-function Inicio() {
-  const { data, draft, user } = useStore();
-  const awaiting = data.orders.filter((o) => o.status === 'awaiting');
-  const delivered = data.orders.filter((o) => o.status === 'delivered').length;
-  const first = (user?.name ?? '').split(' ')[0];
-  const date = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-  return (
-    <>
-      <header className="page-head"><div><span className="eyebrow">{date}</span><h1>{first ? `Olá, ${first}` : 'Atendimento'}</h1></div></header>
-
-      <div className="rt-split rt-hero-row">
-        <section className="rt-hero rt-main">
-          <span className="rt-badge">{awaiting.length ? 'Aguardando volumes' : 'Tudo em dia'}</span>
-          <div>
-            <strong>{awaiting.length ? `${awaiting.length} compra(s) esperando as caixas` : 'Nenhuma compra esperando caixas'}</strong>
-            <span>{draft ? 'Você também tem 1 rascunho de cadastro.' : 'Cadastre uma nova entrega quando o cliente chegar ao caixa.'}</span>
-          </div>
-          <Link className="btn rt-hero-btn" to={awaiting.length ? '/pendencias' : 'nova'}>{awaiting.length ? 'Continuar atendimento' : 'Nova entrega'}</Link>
-        </section>
-        <Stagger className="rt-stats rt-side">
-          <Item className="rt-stat"><span>Aguardando</span><b><Counter to={awaiting.length} /></b><small>caixas a registrar</small></Item>
-          <Item className="rt-stat"><span>Entregues</span><b className="green"><Counter to={delivered} /></b><small>no total</small></Item>
-          <Item className="rt-stat"><span>Entregas</span><b><Counter to={data.orders.length} /></b><small>cadastradas</small></Item>
-        </Stagger>
-      </div>
-
-      <h2 className="rt-h2">Atalhos</h2>
-      <div className="tiles">
-        <Link className="tile" to="nova"><strong>Nova entrega</strong><span>Cadastre o cliente e o endereço.</span></Link>
-        <Link className="tile" to="/pendencias"><strong>Continuar atendimento</strong><span>{awaiting.length} compra(s) aguardando caixas{draft ? ' · 1 rascunho' : ''}</span></Link>
-        <Link className="tile" to="ficha"><strong>Ficha de papel</strong><span>Fotografe a ficha, revise e crie a entrega.</span></Link>
-        <Link className="tile" to="/entregas"><strong>Consultar entregas</strong><span>Encontre uma compra pelo cliente ou pelo código.</span></Link>
-      </div>
-    </>
-  );
-}
-
 const digits = (v: string) => v.replace(/\D/g, '');
 
-function NovaEntrega() {
-  const { data, draft, saveDraft, createOrder } = useStore();
+/** Tela única do atendimento: busca o cliente, cadastra a entrega em três blocos e mostra a fila do dia ao lado. */
+function Balcao() {
+  const { data, draft, saveDraft, createOrder, user } = useStore();
   const navigate = useNavigate();
   const [form, setForm] = useState<DeliveryForm>(draft ?? EMPTY_DELIVERY_FORM);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
+  const [columns, setColumns] = useState(false);
+  const [editAddress, setEditAddress] = useState(false);
 
   const touched = JSON.stringify(form) !== JSON.stringify(EMPTY_DELIVERY_FORM);
   useEffect(() => { saveDraft(touched ? form : null); }, [form, touched, saveDraft]);
@@ -100,6 +66,7 @@ function NovaEntrega() {
     if (!c) return;
     setForm((f) => ({ ...f, clientId: c.id, name: c.name, phone: c.phone, neighborhood: c.neighborhood, street: c.street, number: c.number, complement: c.complement, reference: c.reference, consent: c.consent }));
     setSearch('');
+    setEditAddress(false);
   };
 
   const submit = async () => {
@@ -114,54 +81,149 @@ function NovaEntrega() {
       setError(e instanceof Error ? e.message : 'Não foi possível cadastrar a entrega.');
     }
   };
+  const discard = () => { setForm(EMPTY_DELIVERY_FORM); saveDraft(null); setEditAddress(false); };
 
-  const discard = () => { setForm(EMPTY_DELIVERY_FORM); saveDraft(null); };
+  const awaiting = data.orders.filter((o) => o.status === 'awaiting');
+  const delivered = data.orders.filter((o) => o.status === 'delivered');
+  const inProgress = data.orders.filter((o) => ['ready', 'queued', 'loading', 'released', 'onroute'].includes(o.status));
+  const recent = [...data.orders].filter((o) => o.status !== 'awaiting').sort((a, b) => b.id - a.id).slice(0, 5);
+
+  const known = form.clientId != null;
+  const clientDone = !!form.name.trim() && !!form.phone.trim();
+  const addressDone = !!form.neighborhood && !!form.street.trim() && !!form.number.trim();
+  const first = (user?.name ?? '').split(' ')[0];
+  const date = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const stepHead = (n: number, title: string, done: boolean, summary?: string) => (
+    <div className="bal-step-head">
+      <span className={`bal-n ${done ? 'ok' : ''}`}>{done ? '✓' : n}</span>
+      <h3>{title}</h3>
+      {done && summary && <span className="muted small">{summary}</span>}
+    </div>
+  );
+  const orderLine = (o: (typeof data.orders)[number]) => (
+    <div className="bal-line" key={o.id}>
+      <div><strong>{o.name}</strong><span className="muted small">#{o.id} · {o.neighborhood}</span></div>
+      {o.status === 'awaiting' ? <Link className="btn sm" to={`/atendimento/caixas/${o.id}`}>Registrar caixas</Link> : <OrderPill status={o.status} />}
+    </div>
+  );
+
+  const columnsData: Array<[string, Array<{ id: number; name: string; neighborhood: string; status: (typeof data.orders)[number]['status'] }>]> = [
+    ['Rascunho', touched ? [{ id: 0, name: form.name || 'Novo cadastro', neighborhood: form.neighborhood || 'em preenchimento', status: 'draft' }] : []],
+    ['Aguardando caixas', awaiting],
+    ['Em andamento', inProgress],
+    ['Entregues', delivered],
+  ];
 
   return (
     <>
-      <Header title="Nova entrega" subtitle="Identifique o cliente, confirme o endereço e cadastre."
-        actions={touched && <button type="button" onClick={discard}>Descartar rascunho</button>} />
-      <Steps current={1} />
-      <section className="card">
-        <h2>Quem vai receber?</h2>
-        <label className="field">Buscar cliente por telefone ou nome
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ex.: 00101 ou Maria" />
-        </label>
-        {matches.length > 0 && (
-          <ul className="suggest">
-            {matches.map((c) => (
-              <li key={c.id}><button type="button" onClick={() => pick(c.id)}>
-                <strong>{c.name}</strong> <span className="muted">{c.phone} · {c.street}, {c.number} — {c.neighborhood}</span>
-              </button></li>
+      <header className="page-head"><div><span className="eyebrow">{date}</span><h1>{first ? `Olá, ${first}` : 'Atendimento'}</h1></div></header>
+
+      <div className="bal-stats">
+        <div className="rt-stat"><span>Aguardando caixas</span><b><Counter to={awaiting.length} /></b></div>
+        <div className="rt-stat"><span>Em andamento</span><b><Counter to={inProgress.length} /></b></div>
+        <div className="rt-stat"><span>Entregues</span><b className="green"><Counter to={delivered.length} /></b></div>
+      </div>
+
+      <div className="bal-grid">
+        <section className="card bal-form" aria-label="Nova entrega">
+          <div className="card-head">
+            <h2>Nova entrega</h2>
+            {touched && <span className="actions"><span className="pill green">Rascunho salvo</span><button type="button" className="link" onClick={discard}>Descartar</button></span>}
+          </div>
+
+          <div className="bal-search">
+            <span aria-hidden="true">⌕</span>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente por telefone ou nome" aria-label="Buscar cliente por telefone ou nome" />
+          </div>
+          {matches.length > 0 && (
+            <ul className="suggest">
+              {matches.map((c) => (
+                <li key={c.id}><button type="button" onClick={() => pick(c.id)}>
+                  <strong>{c.name}</strong> <span className="muted">{c.phone} · {c.street}, {c.number} — {c.neighborhood}</span>
+                </button></li>
+              ))}
+            </ul>
+          )}
+          {search.trim().length >= 3 && matches.length === 0 && <p className="muted small">Nenhum cliente encontrado. Preencha os dados abaixo para cadastrar um novo.</p>}
+
+          <div className="bal-step">
+            {stepHead(1, 'Cliente', clientDone, `${form.name} · ${form.phone}`)}
+            {known && <p className="pill green">Cliente já cadastrado</p>}
+            <div className="form-grid">
+              <label className="field">Nome<input value={form.name} onChange={set('name')} /></label>
+              <label className="field">Telefone<input value={form.phone} onChange={set('phone')} inputMode="tel" /></label>
+            </div>
+          </div>
+
+          <div className="bal-step">
+            {stepHead(2, 'Endereço', addressDone, `${form.street}, ${form.number} — ${form.neighborhood}`)}
+            {known && addressDone && !editAddress ? (
+              <div className="bal-address">
+                <span>{form.street}, {form.number}{form.complement ? ` · ${form.complement}` : ''} — {form.neighborhood}</span>
+                <button type="button" className="link" onClick={() => setEditAddress(true)}>Alterar endereço</button>
+              </div>
+            ) : (
+              <div className="form-grid">
+                <label className="field">Bairro
+                  <select value={form.neighborhood} onChange={set('neighborhood')}>
+                    <option value="">Selecione</option>
+                    {data.neighborhoods.map((n) => <option key={n.name} value={n.name}>{n.name} · {n.zone}</option>)}
+                  </select>
+                </label>
+                <label className="field">Rua<input value={form.street} onChange={set('street')} /></label>
+                <label className="field">Número<input value={form.number} onChange={set('number')} /></label>
+                <label className="field">Complemento<input value={form.complement} onChange={set('complement')} /></label>
+                <label className="field wide">Ponto de referência<input value={form.reference} onChange={set('reference')} /></label>
+              </div>
+            )}
+          </div>
+
+          <div className="bal-step">
+            {stepHead(3, 'Entrega', !!form.window, form.window)}
+            <div className="form-grid">
+              <label className="field">Janela de entrega
+                <select value={form.window} onChange={set('window')}>{DELIVERY_WINDOWS.map((w) => <option key={w}>{w}</option>)}</select>
+              </label>
+              <label className="field wide">Observações<textarea rows={2} value={form.notes} onChange={set('notes')} /></label>
+            </div>
+            <label className="check"><input type="checkbox" checked={form.consent} onChange={set('consent')} /> O cliente aceita receber avisos por WhatsApp</label>
+          </div>
+
+          {error && <p className="error" role="alert">{error}</p>}
+          <div className="bar"><button type="button" className="primary" onClick={() => void submit()}>Cadastrar e identificar caixas</button></div>
+          <p className="muted small">Os dados digitados ficam salvos como rascunho neste navegador.</p>
+        </section>
+
+        <aside className="card bal-queue" aria-label="Fila do dia">
+          <div className="card-head"><h2>Aguardando caixas</h2><span className="pill blue">{awaiting.length}</span></div>
+          {awaiting.length === 0 ? <p className="muted small">Nenhuma compra esperando caixas.</p> : awaiting.slice(0, 6).map(orderLine)}
+          <div className="card-head bal-recent"><h2>Recentes</h2><button type="button" className="link" onClick={() => setColumns(true)}>Ver em colunas</button></div>
+          {recent.map(orderLine)}
+          <div className="bal-links"><Link to="/pendencias">Continuar atendimento</Link><Link to="ficha">Ficha de papel</Link><Link to="/entregas">Consultar entregas</Link></div>
+        </aside>
+      </div>
+
+      {columns && (
+        <Modal title="Fila do atendimento" width={1040} onClose={() => setColumns(false)}>
+          <div className="bal-cols">
+            {columnsData.map(([title, list]) => (
+              <section key={title}>
+                <div className="card-head"><h3>{title}</h3><span className="pill gray">{list.length}</span></div>
+                {list.slice(0, 8).map((o) => (
+                  <div className="bal-kcard" key={`${title}-${o.id}`}>
+                    <strong>{o.name}</strong>
+                    <span className="muted small">{o.id ? `#${o.id} · ` : ''}{o.neighborhood}</span>
+                    {o.id ? <OrderPill status={o.status} /> : <span className="pill gray">Rascunho</span>}
+                  </div>
+                ))}
+                {list.length > 8 && <p className="muted small">+ {list.length - 8} na lista de entregas</p>}
+                {list.length === 0 && <p className="muted small">Nada por aqui.</p>}
+              </section>
             ))}
-          </ul>
-        )}
-        {form.clientId != null && <p className="pill green">Cliente já cadastrado</p>}
-        <div className="form-grid">
-          <label className="field">Nome<input value={form.name} onChange={set('name')} /></label>
-          <label className="field">Telefone<input value={form.phone} onChange={set('phone')} inputMode="tel" /></label>
-          <label className="field">Bairro
-            <select value={form.neighborhood} onChange={set('neighborhood')}>
-              <option value="">Selecione</option>
-              {data.neighborhoods.map((n) => <option key={n.name} value={n.name}>{n.name} · {n.zone}</option>)}
-            </select>
-          </label>
-          <label className="field">Rua<input value={form.street} onChange={set('street')} /></label>
-          <label className="field">Número<input value={form.number} onChange={set('number')} /></label>
-          <label className="field">Complemento<input value={form.complement} onChange={set('complement')} /></label>
-          <label className="field wide">Ponto de referência<input value={form.reference} onChange={set('reference')} /></label>
-          <label className="field">Janela de entrega
-            <select value={form.window} onChange={set('window')}>
-              {DELIVERY_WINDOWS.map((w) => <option key={w}>{w}</option>)}
-            </select>
-          </label>
-          <label className="field wide">Observações<textarea rows={2} value={form.notes} onChange={set('notes')} /></label>
-        </div>
-        <label className="check"><input type="checkbox" checked={form.consent} onChange={set('consent')} /> O cliente aceita receber avisos por WhatsApp</label>
-        {error && <p className="error" role="alert">{error}</p>}
-        <div className="bar"><button type="button" className="primary" onClick={submit}>Cadastrar e identificar caixas</button></div>
-        <p className="muted small">Os dados digitados ficam salvos como rascunho neste navegador.</p>
-      </section>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

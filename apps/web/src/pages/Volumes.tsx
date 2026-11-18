@@ -3,7 +3,7 @@ import type { Order } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { Icon } from '../app/icons';
 import { Counter, Item, Stagger } from '../app/motion';
-import { Empty, Header, OrderPill } from './ui';
+import { Empty, Header, OrderPill, Tabs } from './ui';
 
 const place = (o: Order) => (o.cold || o.frozen ? o.storage : 'Área de expedição');
 type Filter = 'all' | 'cold' | 'gas' | 'none';
@@ -35,11 +35,7 @@ export function Volumes() {
         <Item className="rt-stat"><span>Sem caixas</span><b className={none ? 'red' : ''}><Counter to={none} /></b><small>{none ? 'aguardam identificação' : 'tudo identificado'}</small></Item>
       </Stagger>
 
-      <div className="chips">
-        {([['all', 'Todas'], ['cold', 'Frio e congelado'], ['gas', 'Com gás'], ['none', 'Sem caixas']] as [Filter, string][]).map(([k, label]) => (
-          <button key={k} type="button" className={filter === k ? 'chip on' : 'chip'} onClick={() => setFilter(k)}>{label}</button>
-        ))}
-      </div>
+      <Tabs value={filter} onChange={(v) => setFilter(v as Filter)} label="Filtro de volumes" items={[{ value: 'all', label: 'Todas' }, { value: 'cold', label: 'Frio e congelado' }, { value: 'gas', label: 'Com gás' }, { value: 'none', label: 'Sem caixas' }]} />
 
       {orders.length === 0 ? <Empty>Nenhum volume encontrado.</Empty> : (
         <Stagger as="ul" className="rt-list" key={filter} count={orders.length}>

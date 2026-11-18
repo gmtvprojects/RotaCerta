@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { call } from '../app/api';
 import { BOX_TYPE_LABELS, canAccess, volumesOf } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { OrderActions } from './OrderActions';
@@ -21,6 +23,7 @@ export function OrderDetail({ orderId, onClose }: { orderId: number; onClose: ()
       {canEditBoxes && <Link className="btn primary" to={`/atendimento/caixas/${o.id}`} onClick={onClose}>Registrar volumes</Link>}
       {o.routeId && canAccess(role, 'romaneio') && <Link className="btn primary" to="/romaneios" onClick={onClose}>Ver romaneio</Link>}
     </>}>
+      {role !== 'motorista' && !['delivered', 'cancelled'].includes(o.status) && <TrackingLink orderId={o.id} />}
       <div><strong>{o.name}</strong> <OrderPill status={o.status} />
         <div className="muted small">{o.phone} · contato fictício</div></div>
 
@@ -64,5 +67,26 @@ export function OrderDetail({ orderId, onClose }: { orderId: number; onClose: ()
         </ol>
       </div>
     </Modal>
+  );
+}
+
+/** Gera o link que o cliente abre para acompanhar a compra (situação e, quando for a vez dele, o entregador no mapa). */
+function TrackingLink({ orderId }: { orderId: number }) {
+  const [link, setLink] = useState('');
+  const [msg, setMsg] = useState('');
+  const create = async () => {
+    try {
+      const { token } = await call<{ token: string }>('POST', `/orders/${orderId}/tracking-link`);
+      const url = `${location.origin}${location.pathname}#/rastreio/${token}`;
+      setLink(url);
+      try { await navigator.clipboard.writeText(url); setMsg('Link copiado. Envie ao cliente; vale por 3 dias.'); } catch { setMsg('Copie o link abaixo e envie ao cliente; vale por 3 dias.'); }
+    } catch (e) { setMsg(e instanceof Error ? e.message : 'Não foi possível gerar o link.'); }
+  };
+  return (
+    <div className="track-link">
+      <button type="button" className="link" onClick={() => void create()}>Gerar link de acompanhamento para o cliente</button>
+      {msg && <span className="muted small">{msg}</span>}
+      {link && <input readOnly value={link} aria-label="Link de acompanhamento" onFocus={(e) => e.currentTarget.select()} />}
+    </div>
   );
 }

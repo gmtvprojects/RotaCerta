@@ -360,3 +360,6 @@ body:has(.shell) { background: #f3f6fd; }
 /* linhas genéricas (row-item, stops) com o ritmo do Rota */
 .shell .row-item, .shell .stops li { padding: 12px 0; }
 .shell .card > h2 + .row-item, .shell .card > h2 + p + .row-item { border-top: 1px solid var(--line); margin-top: 8px; }
+
+/* Hover discreto nas linhas: só a cor de fundo muda, com transição curta */
+.shell tbody tr, .shell .rt-row { transition: background-color .12s ease; }

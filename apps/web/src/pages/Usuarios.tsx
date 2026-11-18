@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ROLE_LABELS, type Role } from '@rotacerta/domain';
 import { call } from '../app/api';
+import { TableSkeleton } from './Skeletons';
 import { useStore } from '../app/store';
 import { Modal } from './ui';
 
@@ -13,7 +14,7 @@ const message = (e: unknown) => (e instanceof Error ? e.message : 'Não foi poss
 /** Acesso da equipe: quem entra no sistema, com qual perfil. Só a gestão chega aqui. */
 export function Usuarios() {
   const { data, user: me } = useStore();
-  const [users, setUsers] = useState<UserDto[]>([]);
+  const [users, setUsers] = useState<UserDto[] | null>(null);
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState<{ kind: 'edit'; user?: UserDto } | { kind: 'password'; user: UserDto } | null>(null);
 
@@ -29,7 +30,7 @@ export function Usuarios() {
     <section className="card">
       <div className="card-head"><h2>Usuários e acesso</h2><button type="button" className="primary" onClick={() => setDialog({ kind: 'edit' })}>+ Usuário</button></div>
       {error && <p className="error" role="alert">{error}</p>}
-      <div className="table-wrap">
+      {users === null ? <TableSkeleton rows={4} cols={6} /> : <div className="table-wrap">
         <table>
           <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Motorista</th><th>Situação</th><th></th></tr></thead>
           <tbody>
@@ -49,7 +50,7 @@ export function Usuarios() {
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
       <p className="muted small">Desativar ou trocar a senha encerra as sessões da pessoa. O sistema sempre mantém ao menos um usuário ativo na gestão.</p>
       {dialog?.kind === 'edit' && <UserDialog user={dialog.user} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); void load(); }} />}
       {dialog?.kind === 'password' && <PasswordDialog user={dialog.user} onClose={() => setDialog(null)} />}
@@ -128,7 +129,7 @@ function PasswordDialog({ user, onClose }: { user: UserDto; onClose: () => void 
 
 /** Trilha de auditoria: quem fez o quê e quando (mais recentes primeiro). */
 export function Auditoria() {
-  const [rows, setRows] = useState<AuditRow[]>([]);
+  const [rows, setRows] = useState<AuditRow[] | null>(null);
   const [error, setError] = useState('');
   const load = useCallback(() => call<AuditRow[]>('GET', '/audit?limit=100').then(setRows).catch((e) => setError(message(e))), []);
   useEffect(() => { void load(); }, [load]);
@@ -137,7 +138,7 @@ export function Auditoria() {
     <section className="card">
       <div className="card-head"><h2>Auditoria</h2><button type="button" onClick={() => void load()}>Atualizar</button></div>
       {error && <p className="error" role="alert">{error}</p>}
-      <div className="table-wrap">
+      {rows === null ? <TableSkeleton rows={8} cols={5} /> : <div className="table-wrap">
         <table>
           <thead><tr><th>Quando</th><th>Quem</th><th>O quê</th><th>Resultado</th><th>IP</th></tr></thead>
           <tbody>
@@ -152,7 +153,7 @@ export function Auditoria() {
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
       <p className="muted small">Registra entradas, alterações e ações bloqueadas. Senhas e conteúdos digitados nunca são guardados.</p>
     </section>
   );

@@ -1,12 +1,30 @@
 import { useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { addDeparture, addDriver, addNeighborhood, addZone, removeDeparture, saveVehicle, type Vehicle } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import type { Req } from '../app/api';
+import { Icon, type IconName } from '../app/icons';
+import { PALETTES, useThemePref } from '../app/themePref';
+import { useNavStyle } from '../app/navPref';
 import { Header, Modal } from './ui';
 import { Auditoria, Usuarios } from './Usuarios';
+import { NavStyleCard } from './NavStyle';
+import { ThemeCard } from './ThemeCard';
 
-const TABS = ['Bairros e zonas', 'Veículos', 'Equipe', 'Usuários', 'Auditoria', 'Horários de saída', 'WhatsApp'] as const;
+const TABS = ['Bairros e zonas', 'Veículos', 'Equipe', 'Usuários', 'Auditoria', 'Horários de saída', 'WhatsApp', 'Aparência'] as const;
 type Tab = (typeof TABS)[number];
+
+/** Cartões do hub: ícone, descrição curta e a chave usada na URL (?secao=). */
+const HUB: Record<Tab, { key: string; icon: IconName; desc: string }> = {
+  'Bairros e zonas': { key: 'bairros', icon: 'pin', desc: 'Onde a loja entrega e como agrupa as cargas.' },
+  'Veículos': { key: 'veiculos', icon: 'truck', desc: 'Frota disponível para montar cargas.' },
+  'Equipe': { key: 'equipe', icon: 'user', desc: 'Motoristas cadastrados na operação.' },
+  'Usuários': { key: 'usuarios', icon: 'building', desc: 'Quem acessa o sistema e com qual perfil.' },
+  'Auditoria': { key: 'auditoria', icon: 'shield', desc: 'Histórico de ações feitas no sistema.' },
+  'Horários de saída': { key: 'horarios', icon: 'clock', desc: 'Horários em que os romaneios costumam sair.' },
+  'WhatsApp': { key: 'whatsapp', icon: 'phone', desc: 'Avisos automáticos para o cliente.' },
+  'Aparência': { key: 'aparencia', icon: 'sliders', desc: 'Tema, modo claro/escuro e menu.' },
+};
 
 type Form =
   | { kind: 'zone' } | { kind: 'neighborhood' } | { kind: 'driver' } | { kind: 'departure' }
@@ -14,7 +32,12 @@ type Form =
 
 export function Configuracoes() {
   const { data, command } = useStore();
-  const [tab, setTab] = useState<Tab>('Bairros e zonas');
+  // a seção aberta fica na URL (?secao=veiculos): o botão voltar do navegador volta ao hub
+  const [params, setParams] = useSearchParams();
+  const tab = TABS.find((t) => HUB[t].key === params.get('secao')) ?? null;
+  const setTab = (t: Tab | null) => setParams(t ? { secao: HUB[t].key } : {}, { replace: false });
+  const themePref = useThemePref();
+  const navStyle = useNavStyle();
   const [form, setForm] = useState<Form | null>(null);
   const [hood, setHood] = useState<string | null>(null);
   const [problem, setProblem] = useState('');
@@ -30,10 +53,34 @@ export function Configuracoes() {
 
   return (
     <>
-      <Header title="Configurações" subtitle="Bairros, equipe e regras simples para começar." />
+      <Header title={tab ?? 'Configurações'} subtitle={tab ? HUB[tab].desc : 'Escolha o que quer ajustar.'} />
       {problem && <div className="banner" role="alert">{problem} <button type="button" onClick={() => setProblem('')}>Fechar</button></div>}
       {hood && <HoodDialog name={hood} onClose={() => setHood(null)} />}
-      <div className="chips">{TABS.map((t) => <button key={t} type="button" className={tab === t ? 'chip on' : 'chip'} onClick={() => setTab(t)}>{t}</button>)}</div>
+      {!tab && (
+        <div className="conf-grid">
+          {TABS.map((t) => {
+            const summary: Record<Tab, string> = {
+              'Bairros e zonas': `${data.zones.length} regiões · ${data.neighborhoods.length} bairros`,
+              'Veículos': `${data.vehicles.filter((v) => v.active !== false).length} ativos · ${data.vehicles.filter((v) => v.active !== false && !busyVehicles.has(v.id)).length} livres`,
+              'Equipe': `${data.drivers.filter((d) => d.active !== false).length} motoristas`,
+              'Usuários': 'Acessos e perfis',
+              'Auditoria': 'Histórico de ações',
+              'Horários de saída': `${data.departures.length} horários`,
+              'WhatsApp': 'Demonstração',
+              'Aparência': `${PALETTES.find((p) => p.value === themePref.palette)?.label ?? ''} · ${navStyle === 'side' ? 'Menu lateral' : 'Barra embaixo'}`,
+            };
+            return (
+              <button type="button" key={t} className="conf-tile" onClick={() => setTab(t)}>
+                <span className="conf-ico"><Icon name={HUB[t].icon} size={20} /></span>
+                <b>{t}</b>
+                <span className="muted small">{HUB[t].desc}</span>
+                <span className="conf-sum"><span className="pill blue">{summary[t]}</span><Icon name="arrow" size={16} /></span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {tab && <button type="button" className="conf-back" onClick={() => setTab(null)}><Icon name="arrow" size={16} /> Todas as configurações</button>}
 
       {tab === 'Bairros e zonas' && (
         <section className="card">
@@ -77,6 +124,7 @@ export function Configuracoes() {
         </section>
       )}
 
+      {tab === 'Aparência' && <><ThemeCard /><NavStyleCard /></>}
       {tab === 'Usuários' && <Usuarios />}
       {tab === 'Auditoria' && <Auditoria />}
 

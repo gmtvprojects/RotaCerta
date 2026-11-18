@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { suggestSequence } from '@rotacerta/domain';
 import { useStore } from '../app/store';
-import { Empty, Header } from './ui';
+import { Empty, Header, Tabs } from './ui';
 import { Icon } from '../app/icons';
 import { Counter, Item, Stagger } from '../app/motion';
 
@@ -53,10 +53,7 @@ export function Expedicao() {
           </ul>
         </section>
       )}
-      <div className="chips">
-        <button type="button" className={!zone ? 'chip on' : 'chip'} onClick={() => setZone('')}>Todas as regiões</button>
-        {data.zones.map((z) => <button key={z} type="button" className={zone === z ? 'chip on' : 'chip'} onClick={() => setZone(z)}>{z}</button>)}
-      </div>
+      <Tabs value={zone} onChange={setZone} label="Região" items={[{ value: '', label: 'Todas as regiões' }, ...data.zones.map((z) => ({ value: z, label: z }))]} />
       <section className="card">
         {ready.length === 0 ? <Empty>Nenhuma entrega pronta para esta região.</Empty> : (
           <>
