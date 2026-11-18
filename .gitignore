@@ -9,3 +9,7 @@ build/
 *.log
 .DS_Store
 .pglite*/
+
+# opções de layout usadas só para escolher telas (referência local)
+layouts-atendimento/
+layouts-configuracoes/
