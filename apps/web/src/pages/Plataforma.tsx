@@ -4,6 +4,7 @@ import { call } from '../app/api';
 import { Icon, Logo, type IconName } from '../app/icons';
 import { useStore } from '../app/store';
 import { Empty, Header, Modal } from './ui';
+import { SkeletonLines, TableSkeleton } from './Skeletons';
 
 interface CompanyRow { id: number; name: string; active: boolean; createdAt: string; users: number; activeUsers: number; lastLogin: string | null }
 interface CompanyDetail { id: number; name: string; active: boolean; createdAt: string; usage: { orders: number; clients: number; vehicles: number; drivers: number; routes: number } }
@@ -51,7 +52,7 @@ export function PlatformApp() {
 
 /* ---------- empresas ---------- */
 function Empresas() {
-  const [companies, setCompanies] = useState<CompanyRow[]>([]);
+  const [companies, setCompanies] = useState<CompanyRow[] | null>(null);
   const [error, setError] = useState('');
   const [open, setOpen] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
@@ -71,7 +72,7 @@ function Empresas() {
         actions={<button type="button" className="primary" onClick={() => setCreating(true)}>+ Nova empresa</button>} />
       {error && <p className="error" role="alert">{error}</p>}
       <section className="card">
-        {companies.length === 0 ? <Empty>Nenhuma empresa cadastrada.</Empty> : (
+        {companies === null ? <TableSkeleton rows={4} cols={6} /> : companies.length === 0 ? <Empty>Nenhuma empresa cadastrada.</Empty> : (
           <div className="table-wrap">
             <table>
               <thead><tr><th>Empresa</th><th>Situação</th><th>Usuários ativos</th><th>Último acesso</th><th>Criada em</th><th></th></tr></thead>
@@ -166,7 +167,7 @@ function CompanyDialog({ id, onClose }: { id: number; onClose: () => void }) {
     try { await call('PATCH', `/platform/companies/${id}`, { name }); setInfo('Nome atualizado.'); await load(); } catch (e) { setError(message(e)); }
   };
 
-  if (!detail) return <Modal title="Empresa" onClose={onClose}>{error ? <p className="error" role="alert">{error}</p> : <p className="muted">Carregando…</p>}</Modal>;
+  if (!detail) return <Modal title="Empresa" onClose={onClose}>{error ? <p className="error" role="alert">{error}</p> : <SkeletonLines lines={7} />}</Modal>;
 
   return (
     <Modal title={detail.name} onClose={onClose} footer={<button type="button" onClick={onClose}>Fechar</button>}>

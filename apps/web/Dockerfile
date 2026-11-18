@@ -22,5 +22,6 @@ FROM nginx:1.27-alpine AS runtime
 # o nginx troca ${PORT} pelo valor da variável ao subir (o Railway define a porta)
 ENV PORT=8080
 COPY apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY apps/web/security-headers.conf /etc/nginx/security-headers.conf
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 EXPOSE 8080

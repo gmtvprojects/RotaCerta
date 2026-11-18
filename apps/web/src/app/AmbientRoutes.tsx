@@ -9,9 +9,8 @@ import { AmbientRoute, CONFIRM_SECONDS, TRAIL_SECONDS, buildRoads, clamp, splitZ
 export function AmbientRoutes({ pageKey }: { pageKey: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
-    const canvas = ref.current, shell = canvas?.parentElement;
+    const canvas = ref.current, main = canvas?.parentElement as HTMLElement | null, shell = main?.closest<HTMLElement>('.shell');
     const context = canvas?.getContext('2d');
-    const main = shell?.querySelector<HTMLElement>('.main');
     if (!canvas || !shell || !context || !main) return;
     const ctx = context;
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -21,6 +20,8 @@ export function AmbientRoutes({ pageKey }: { pageKey: string }) {
     let obscured = false, disposed = false;
     let colors = { route: '', green: '', background: '', check: '' };
     const observed = new Set<Element>();
+    // PageEnter envolve a tela num elemento `display: contents` (sem caixa própria): os blocos reais são os filhos dele
+    const blocksOf = (el: Element): Element[] => Array.from(el.children).flatMap((c) => (getComputedStyle(c).display === 'contents' ? blocksOf(c) : [c]));
     const rect = (element: Element): Rect => {
       const r = element.getBoundingClientRect();
       return { x: r.left, y: r.top, right: r.right, bottom: r.bottom };
@@ -33,9 +34,15 @@ export function AmbientRoutes({ pageKey }: { pageKey: string }) {
     const clear = () => ctx.clearRect(0, 0, width, height);
     const stop = () => { cancelAnimationFrame(frame); frame = 0; last = 0; };
     const canRun = () => routes.length > 0 && !motion.matches && !document.hidden && !obscured && !disposed;
+    // as variáveis do tema chegam como texto "var(--x)"; um elemento temporário devolve a cor já resolvida
+    const resolve = (token: string, fallback: string) => {
+      const probe = document.createElement('span');
+      probe.style.color = `var(${token}, ${fallback})`; shell!.appendChild(probe);
+      const value = getComputedStyle(probe).color; probe.remove();
+      return value || fallback;
+    };
     const palette = () => {
-      const style = getComputedStyle(document.documentElement);
-      colors = { route: style.getPropertyValue('--brand').trim(), green: style.getPropertyValue('--green').trim(), background: style.getPropertyValue('--bg').trim(), check: style.getPropertyValue('--accent-ink').trim() };
+      colors = { route: resolve('--brand', '#1b4fd8'), green: resolve('--green', '#198100'), background: resolve('--bg', '#ffffff'), check: resolve('--accent-ink', '#ffffff') };
     };
 
     function draw() {
@@ -122,17 +129,18 @@ export function AmbientRoutes({ pageKey }: { pageKey: string }) {
       width = document.documentElement.clientWidth;
       height = Math.min(innerHeight, window.visualViewport?.height ?? innerHeight);
       obscured = Array.from(shell!.querySelectorAll('[role="dialog"], .palette-back, .backdrop')).some(visible);
-      const elements = [main!, ...Array.from(main!.children), ...Array.from(shell!.querySelectorAll('.topbar, .dock, .tour-bar'))];
+      const elements = [main!, ...blocksOf(main!), ...Array.from(shell!.querySelectorAll('header, .topbar, .dock, .tour-bar'))];
       for (const element of observed) if (!elements.includes(element as HTMLElement)) { resize.unobserve(element); observed.delete(element); }
       for (const element of elements) if (!observed.has(element)) { observed.add(element); resize.observe(element); }
       // Blocos em coordenadas da página: rolar não muda a malha.
       const sx = scrollX, sy = scrollY;
-      blocks = Array.from(main!.children).filter(el => !el.matches('.backdrop, [role="dialog"]') && visible(el)).map(rect)
+      blocks = blocksOf(main!).filter(el => el !== canvas && !el.matches('.backdrop, [role="dialog"]') && visible(el)).map(rect)
         .map(r => ({ x: r.x + sx, y: r.y + sy, right: r.right + sx, bottom: r.bottom + sy }));
-      const bar = shell!.querySelector('.topbar'), dock = shell!.querySelector('.dock'), tour = shell!.querySelector('.tour-bar');
+      const bar = shell!.querySelector('header, .topbar'), dock = shell!.querySelector('.dock'), tour = shell!.querySelector('.tour-bar');
       headerBottom = bar ? rect(bar).bottom : 0;
-      dockTop = Math.min(dock ? rect(dock).y : height, tour && visible(tour) ? rect(tour).y : height);
+      dockTop = Math.min(dock && visible(dock) ? rect(dock).y : height, tour && visible(tour) ? rect(tour).y : height);
       const pageHeight = Math.max(document.documentElement.scrollHeight, sy + height);
+      canvas!.style.clipPath = `inset(0 0 0 ${Math.max(0, Math.round(rect(main!).x))}px)`;   // só desenha na coluna do conteúdo (não sobre o menu lateral)
       const nextSize = `${width}x${height}`;
       if (nextSize !== size) {
         size = nextSize;

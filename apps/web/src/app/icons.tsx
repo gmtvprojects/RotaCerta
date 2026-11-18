@@ -1,5 +1,6 @@
+import type { SVGProps } from 'react';
 /** Ícones de traço usados na casca do app (doca, barra do topo, busca e botões). */
-const PATHS = {
+export const PATHS = {
   home: <path d="M3 11l9-8 9 8v9h-6v-6H9v6H3z" />,
   chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
   box: <><path d="M3 8l9-5 9 5v8l-9 5-9-5z" /><path d="M3 8l9 5 9-5M12 13v8" /></>,
@@ -23,6 +24,7 @@ const PATHS = {
   sliders: <><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="8" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></>,
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   phone: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2" />,
+  grid: <><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></>,
   map: <><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" /><path d="M9 4v14M15 6v14" /></>,
 } as const;
 
@@ -36,7 +38,7 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 }
 
 /** Marca: o losango de parada ligado a um trecho de rota. */
-export function Logo({ sub }: { sub?: string }) {
+export function Logo({ sub, mark }: { sub?: string; mark?: boolean }) {
   return (
     <span className="logo">
       <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
@@ -44,7 +46,21 @@ export function Logo({ sub }: { sub?: string }) {
         <path d="M7 18h5a3 3 0 003-3v-1a3 3 0 013-3h1" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
         <circle cx="7" cy="18" r="2.2" fill="#fff" /><circle cx="19" cy="8" r="2.4" className="logo-dot" />
       </svg>
-      <span><strong>RotaCerta</strong>{sub && <small>{sub}</small>}</span>
+      {!mark && <span><strong>RotaCerta</strong>{sub && <small>{sub}</small>}</span>}
     </span>
   );
+}
+
+const cache = new Map<IconName, (props: SVGProps<SVGSVGElement>) => JSX.Element>();
+
+/** Ícone do app no formato que os componentes do Astryx aceitam (um componente SVG). */
+export function svgIcon(name: IconName) {
+  let component = cache.get(name);
+  if (!component) {
+    component = (props) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>{PATHS[name]}</svg>
+    );
+    cache.set(name, component);
+  }
+  return component;
 }

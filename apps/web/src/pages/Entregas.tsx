@@ -4,7 +4,7 @@ import { useStore } from '../app/store';
 import { Icon } from '../app/icons';
 import { Item, Stagger } from '../app/motion';
 import { OrderDetail } from './OrderDetail';
-import { Empty, Header, OrderPill } from './ui';
+import { Empty, Header, OrderPill, Tabs } from './ui';
 
 type Tab = 'all' | 'open' | 'done';
 const TABS: [Tab, string][] = [['all', 'Todas'], ['open', 'Em operação'], ['done', 'Encerradas']];
@@ -58,13 +58,7 @@ export function Entregas() {
         </div>
       )}
 
-      <div className="chips">
-        {TABS.map(([k, label]) => (
-          <button key={k} type="button" className={tab === k ? 'chip on' : 'chip'} onClick={() => setTab(k)}>
-            {label} ({data.orders.filter((o) => k === 'all' || (k === 'done') === isDone(o.status)).length})
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onChange={(v) => setTab(v as typeof tab)} label="Situação das entregas" items={TABS.map(([k, label]) => ({ value: k, label: `${label} (${data.orders.filter((o) => k === 'all' || (k === 'done') === isDone(o.status)).length})` }))} />
 
       {rows.length === 0 ? <Empty>Nenhuma entrega encontrada. Tente outro nome ou remova os filtros.</Empty> : (
         <div className="rt-split">

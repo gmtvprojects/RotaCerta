@@ -4,8 +4,7 @@ import { alertCircleOutline, callOutline, checkmarkCircleOutline, locateOutline,
 import { Link, Navigate } from 'react-router-dom';
 import { OCCURRENCE_REASONS, activeRoute, nextStop, routeOrders, volumesOf, type Order, type StopOutcome } from '@rotacerta/domain';
 import { useSession } from '../session';
-import { SHARE_LABEL, useLocationSharing } from '../location';
-import { usePrefs } from '../prefs';
+import { SHARE_LABEL, useSharingStatus } from '../location';
 import { MapCard, Sheet } from '../ui';
 
 const RECEIVERS = ['O próprio cliente', 'Familiar', 'Portaria', 'Vizinho'];
@@ -13,12 +12,12 @@ const RECEIVERS = ['O próprio cliente', 'Familiar', 'Portaria', 'Vizinho'];
 /** Viagem em andamento (layout "Rastreio" do Rota): selo, próxima parada em destaque, mapa, etapas e ações. */
 export function Viagem() {
   const { data, driverId, finishStop } = useSession();
-  const prefs = usePrefs();
   const [sheet, setSheet] = useState<'deliver' | 'fail' | null>(null);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const r = data ? activeRoute(data, driverId) ?? data.routes.filter((x) => x.driverId === driverId && x.status === 'finished').slice(-1)[0] : undefined;
-  const share = useLocationSharing(r?.status === 'active' ? r.id : null, prefs.shareLocation, prefs.keepAwake);
+  // o envio roda no farol das abas (App.tsx); aqui só mostra a situação
+  const share = useSharingStatus();
   if (!data) return null;
   if (!r) return <Navigate to="/inicio" replace />;
 

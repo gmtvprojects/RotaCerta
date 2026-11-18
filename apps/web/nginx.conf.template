@@ -3,22 +3,29 @@ server {
   root /usr/share/nginx/html;
   index index.html;
 
+  server_tokens off;
+
+  # Cabeçalhos de segurança: nginx não herda add_header entre níveis, então o arquivo é incluído em cada location.
+  include /etc/nginx/security-headers.conf;
+
   gzip on;
   gzip_types text/css application/javascript application/json image/svg+xml;
 
   # arquivos com hash no nome podem ficar em cache por muito tempo
   location /assets/ {
     add_header Cache-Control "public, max-age=31536000, immutable";
+    include /etc/nginx/security-headers.conf;
     try_files $uri =404;
   }
 
   # PWA: o service worker e o manifesto precisam ser revalidados para as atualizações chegarem
-  location = /sw.js { add_header Cache-Control "no-cache"; try_files $uri =404; }
-  location = /manifest.webmanifest { add_header Cache-Control "no-cache"; try_files $uri =404; }
+  location = /sw.js { add_header Cache-Control "no-cache"; include /etc/nginx/security-headers.conf; try_files $uri =404; }
+  location = /manifest.webmanifest { add_header Cache-Control "no-cache"; include /etc/nginx/security-headers.conf; try_files $uri =404; }
 
   # rotas do navegador (react-router) caem no index.html
   location / {
     add_header Cache-Control "no-cache";
+    include /etc/nginx/security-headers.conf;
     try_files $uri $uri/ /index.html;
   }
 }

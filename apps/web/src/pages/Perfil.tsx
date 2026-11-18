@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useStore } from '../app/store';
 import { TOURS, useTour } from '../app/tour';
 import { InstallCard } from './InstallCard';
+import { NavStyleCard } from './NavStyle';
+import { ThemeCard } from './ThemeCard';
 import { Header } from './ui';
 
 /** Pessoas fictícias de cada perfil na demonstração. */
@@ -47,6 +49,8 @@ export function Perfil() {
             <div className="chips" style={{ marginTop: 10 }}>{areas.map((a) => <span className="pill blue" key={a}>{a}</span>)}</div>
             <p className="muted small">Seu acesso é definido pelo perfil do seu usuário.</p>
           </section>
+      <ThemeCard />
+      <NavStyleCard />
       <section className="card">
         <div className="card-head"><h2>Alterar minha senha</h2></div>
         <form onSubmit={async (e) => { e.preventDefault(); const err = await changePassword(current, next); setPwMsg(err ? { ok: false, text: err } : { ok: true, text: 'Senha alterada. Suas outras sessões foram encerradas.' }); if (!err) { setCurrent(''); setNext(''); } }}>

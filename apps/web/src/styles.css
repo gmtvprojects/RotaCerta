@@ -296,7 +296,7 @@ button.m-row:active:not(:disabled) { transform: none; background: var(--sunk); }
 /* Atendimento */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .tile { display: flex; flex-direction: column; gap: 4px; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
-.tile:hover { border-color: var(--brand); transform: translateY(-2px); }
+.tile:hover { border-color: var(--brand); }
 .tile strong { font: 700 18px var(--display); }
 .tile span { color: var(--muted); font-size: 14px; } .tile.primary { background: linear-gradient(135deg, var(--grad-a), var(--grad-b)); border-color: transparent; color: #fff; } .tile.primary span { color: #dbe6ff; }
 .steps { display: flex; gap: 8px; list-style: none; padding: 0; margin: 0 0 16px; flex-wrap: wrap; }
@@ -421,3 +421,32 @@ textarea { font: inherit; padding: 9px 11px; border: 1px solid var(--line); bord
   .signin-submit::before, .signin-submit-icon .icon { transition: none; }
   button, .tile { transition: none; }
 }
+
+/* Acessibilidade: link para pular a navegação e foco sempre visível no teclado */
+.skip-link { position: absolute; left: 12px; top: -48px; z-index: 100; padding: 10px 16px; border-radius: 10px; background: var(--deep, #081735); color: #fff; font-weight: 600; transition: top .15s; }
+.skip-link:focus { top: 12px; }
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 3px solid var(--brand, #2563eb); outline-offset: 2px; }
+.main:focus { outline: none; }
+
+/* Carregamento: esqueleto no lugar do texto "Carregando…" */
+.skeleton { height: 14px; margin-top: 14px; border-radius: 8px; background: linear-gradient(90deg, var(--sunk, #e6ecf7) 25%, var(--line, #d5deee) 50%, var(--sunk, #e6ecf7) 75%); background-size: 200% 100%; animation: skeleton 1.2s linear infinite; }
+.skeleton.short { width: 60%; }
+@keyframes skeleton { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* ---------- Navegação: menu lateral (padrão no computador) ou barra embaixo ---------- */
+.nav-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 8px 0 12px; }
+.nav-option { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 2px solid var(--line); border-radius: 14px; cursor: pointer; background: var(--card); }
+.nav-option.on { border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent); }
+.nav-option input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.nav-option:has(input:focus-visible) { outline: 3px solid var(--brand); outline-offset: 2px; }
+.nav-thumb { position: relative; display: block; height: 64px; border-radius: 8px; background: var(--sunk); overflow: hidden; }
+.nav-thumb i { position: absolute; background: var(--deep, #081735); border-radius: 4px; }
+.nav-thumb.t-side i:first-child { left: 6px; top: 6px; bottom: 6px; width: 22%; }
+.nav-thumb.t-side i:last-child { display: none; }
+.nav-thumb.t-dock i:first-child { left: 22%; right: 22%; bottom: 6px; height: 14px; border-radius: 8px; }
+.nav-thumb.t-dock i:last-child { display: none; }
+
+/* Menu lateral do Astryx só no computador; nas telas estreitas fica a barra de baixo */
+@media (max-width: 900px) { .nav-side [class*="astryx-app-shell-sidenav"], .nav-side aside { display: none !important; } }
+@media (min-width: 901px) { .shell.nav-side .dock { display: none; } }

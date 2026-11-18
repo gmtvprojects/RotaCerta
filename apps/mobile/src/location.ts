@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ApiError, call } from './api';
 
 interface Point { lat: number; lng: number; accuracy?: number; speed?: number; heading?: number; recordedAt: string }
@@ -8,6 +8,25 @@ const SAMPLE_MS = 5_000;
 const SEND_MS = 8_000;
 const MAX_BUFFER = 500;
 const finite = (n: number | null | undefined) => (typeof n === 'number' && Number.isFinite(n) ? n : undefined);
+
+/**
+ * Fila de pontos guardada no aparelho: se o app fechar, recarregar ou o celular reiniciar sem sinal, os pontos da
+ * viagem não se perdem e são enviados quando ela volta (o servidor ignora repetidos e recusa pontos com mais de 24 h).
+ */
+const queueKey = (routeId: number) => `rotacerta:gps:${routeId}`;
+function loadQueue(routeId: number): Point[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(queueKey(routeId)) ?? '[]') as Point[];
+    const cutoff = Date.now() - 23 * 3_600_000;
+    return Array.isArray(raw) ? raw.filter((p) => typeof p?.lat === 'number' && Date.parse(p.recordedAt) > cutoff).slice(-MAX_BUFFER) : [];
+  } catch { return []; }
+}
+function saveQueue(routeId: number, points: Point[]) {
+  try {
+    if (points.length) localStorage.setItem(queueKey(routeId), JSON.stringify(points));
+    else localStorage.removeItem(queueKey(routeId));
+  } catch { /* sem armazenamento: fica só na memória */ }
+}
 
 /**
  * Envia a posição do motorista em lote enquanto a viagem está ativa (mesma regra do web).
@@ -21,7 +40,7 @@ export function useLocationSharing(routeId: number | null, enabled: boolean, kee
     if (!enabled || routeId === null) { setState('off'); return; }
     if (!('geolocation' in navigator)) { setState('unsupported'); return; }
     setState('starting');
-    let buffer: Point[] = [];
+    let buffer: Point[] = loadQueue(routeId);
     let sending = false;
     let stopped = false;
     let lastSample = 0;
@@ -34,10 +53,11 @@ export function useLocationSharing(routeId: number | null, enabled: boolean, kee
       try {
         await call('POST', `/routes/${routeId}/locations`, { points: batch });
         buffer = buffer.slice(batch.length);
+        saveQueue(routeId, buffer);
         setLastSent(new Date());
         setState('sharing');
       } catch (e) {
-        if (e instanceof ApiError && (e.status === 403 || e.status === 422)) { stopped = true; setState('stopped'); } else setState('error');
+        if (e instanceof ApiError && (e.status === 403 || e.status === 422)) { stopped = true; saveQueue(routeId, []); setState('stopped'); } else setState('error');
       } finally { sending = false; }
     };
 
@@ -52,9 +72,11 @@ export function useLocationSharing(routeId: number | null, enabled: boolean, kee
         heading: finite(c.heading), recordedAt: new Date(pos.timestamp || now).toISOString(),
       });
       if (buffer.length > MAX_BUFFER) buffer.shift();
+      saveQueue(routeId, buffer);
       if (buffer.length === 1) void flush();
     }, (err) => setState(err.code === err.PERMISSION_DENIED ? 'denied' : 'error'), { enableHighAccuracy: true, maximumAge: 5_000, timeout: 20_000 });
     const timer = setInterval(() => void flush(), SEND_MS);
+    if (buffer.length) void flush();
 
     const awake = async () => { if (!keepAwake) return; try { wake = (await navigator.wakeLock?.request('screen')) ?? null; } catch { /* não suportado */ } };
     void awake();
@@ -82,3 +104,21 @@ export const SHARE_LABEL: Record<ShareState, string> = {
   error: 'Falha ao enviar a localização. Tentando de novo…',
   stopped: 'Viagem encerrada: a localização parou de ser enviada.',
 };
+
+/* Estado do envio compartilhado: o farol roda uma vez no app; as telas só leem. */
+type Shared = { state: ShareState; lastSent: Date | null };
+let shared: Shared = { state: 'off', lastSent: null };
+const listeners = new Set<() => void>();
+const publish = (next: Shared) => { shared = next; listeners.forEach((l) => l()); };
+
+/** Lido pelas telas (selo e aviso da viagem). */
+export const useSharingStatus = () => useSyncExternalStore((l) => { listeners.add(l); return () => { listeners.delete(l); }; }, () => shared);
+
+/**
+ * Farol do motorista: montado uma vez nas abas do app, envia a posição durante a viagem ativa em QUALQUER aba
+ * (Início, Entregas, Perfil...), não só na aba Viagem.
+ */
+export function useDriverBeacon(routeId: number | null, enabled: boolean, keepAwake: boolean) {
+  const { state, lastSent } = useLocationSharing(routeId, enabled, keepAwake);
+  useEffect(() => { publish({ state, lastSent }); }, [state, lastSent]);
+}

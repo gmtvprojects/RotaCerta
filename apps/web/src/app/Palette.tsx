@@ -8,9 +8,9 @@ export interface PaletteItem { key: string; group: string; label: string; hint?:
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /**
- * Busca do app (Ctrl K ou o botão "Buscar" da doca): leva a qualquer tela do perfil e encontra entregas.
- * A doca só mostra os destinos mais usados; o resto fica aqui.
- * `search` devolve resultados que dependem do texto digitado (as entregas).
+ * Busca do sistema (Ctrl K ou o campo no centro do topo): encontra entregas, clientes, romaneios, equipe, caixas e
+ * telas, e tem ações rápidas. `items` aparece sem digitar nada (telas e ações); `search` traz os dados que batem
+ * com o texto (ver `globalSearch.ts`).
  */
 export function Palette({ items, search, onClose }: { items: PaletteItem[]; search: (query: string) => PaletteItem[]; onClose: () => void }) {
   const [query, setQuery] = useState('');
@@ -29,7 +29,7 @@ export function Palette({ items, search, onClose }: { items: PaletteItem[]; sear
 
   return (
     <motion.div className="palette-back" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
-      <motion.div className="palette" initial={{ opacity: 0, scale: 0.85, y: -40 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={BOUNCY} role="dialog" aria-modal="true" aria-label="Buscar" onClick={(e) => e.stopPropagation()}
+      <motion.div className="palette" initial={{ opacity: 0, scale: 0.96, y: -12 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={BOUNCY} role="dialog" aria-modal="true" aria-label="Buscar" onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Escape') onClose();
           else if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, results.length - 1)); }
@@ -38,7 +38,7 @@ export function Palette({ items, search, onClose }: { items: PaletteItem[]; sear
         }}>
         <label className="palette-input">
           <Icon name="search" />
-          <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar tela, cliente ou número da entrega" aria-label="Buscar" />
+          <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar entregas, clientes, romaneios, motoristas, caixas ou telas" aria-label="Buscar" />
         </label>
         <div className="palette-list" ref={list}>
           {results.length === 0 && <p className="empty">Nada encontrado para “{query}”.</p>}

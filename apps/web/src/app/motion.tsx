@@ -3,22 +3,24 @@ import { animate, motion, stagger, useMotionValue, useTransform, type Transition
 
 /**
  * Movimento do sistema (biblioteca Motion). Tudo passa por aqui para o jeito de mexer ser o mesmo
- * em todas as telas: molas rápidas e com sobra (overshoot), entradas em cascata, toque que afunda.
+ * em todas as telas: animado, mas contido. Entradas sobem ~15 px com fade em mola amortecida e cascata curta;
+ * o toque afunda pouco. Sem desfoque e sem molas que balançam.
  * `prefers-reduced-motion` é respeitado: o `MotionConfig` em main.tsx desliga os transforms e
  * as funções imperativas abaixo checam `reduced()`.
  */
-export const SNAPPY: Transition = { type: 'spring', stiffness: 520, damping: 30, mass: 0.8 };
-export const BOUNCY: Transition = { type: 'spring', stiffness: 420, damping: 16 };
-export const PRESS: Transition = { type: 'spring', stiffness: 800, damping: 28 };
+export const SNAPPY: Transition = { type: 'spring', stiffness: 520, damping: 40, mass: 0.8 };
+/** Mola com sobra mínima (amortecida): dá vida sem balançar. Usada em listas, páginas e janelas. */
+export const BOUNCY: Transition = { type: 'spring', stiffness: 360, damping: 28, mass: 0.9 };
+export const PRESS: Transition = { type: 'spring', stiffness: 600, damping: 32 };
 
 export const reduced = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Itens que entram em cascata; use `Stagger` no pai e `Item` nos filhos. */
-// `count` limita a cascata a ~0,7 s no total: listas grandes não ficam esperando a última linha.
-const listFor = (count: number): Variants => ({ hidden: {}, show: { transition: { delayChildren: stagger(Math.min(0.055, 0.7 / Math.max(count, 1))) } } });
+// `count` limita a cascata a ~0,4 s no total: listas grandes não ficam esperando a última linha.
+const listFor = (count: number): Variants => ({ hidden: {}, show: { transition: { delayChildren: stagger(Math.min(0.04, 0.4 / Math.max(count, 1))) } } });
 const item: Variants = {
-  hidden: { opacity: 0, y: 26, scale: 0.94, filter: 'blur(6px)' },
-  show: { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transition: BOUNCY },
+  hidden: { opacity: 0, y: 14, scale: 0.985 },
+  show: { opacity: 1, y: 0, scale: 1, transition: BOUNCY },
 };
 
 type Tag = 'div' | 'ul' | 'ol' | 'section' | 'tbody';
@@ -45,8 +47,8 @@ export function PageEnter({ children }: { children: ReactNode }) {
     if (!kids.length) return;
     const a = animate(
       kids,
-      { opacity: [0, 1], y: [34, 0], scale: [0.95, 1], filter: ['blur(8px)', 'blur(0px)'] },
-      { ...BOUNCY, delay: stagger(0.07) },
+      { opacity: [0, 1], y: [16, 0], scale: [0.985, 1] },
+      { ...BOUNCY, delay: stagger(0.05) },
     );
     return () => a.cancel();
   }, []);
@@ -59,14 +61,14 @@ export function Counter({ to, className }: { to: number; className?: string }) {
   const text = useTransform(value, (v) => Math.round(v).toString());
   useEffect(() => {
     if (reduced()) { value.set(to); return; }
-    const c = animate(value, to, { duration: 1.1, ease: [0.16, 1, 0.3, 1] });
+    const c = animate(value, to, { duration: 0.8, ease: [0.16, 1, 0.3, 1] });
     return () => c.stop();
   }, [to, value]);
   return <motion.span className={className}>{text}</motion.span>;
 }
 
 /**
- * Toque que afunda em qualquer botão/cartão clicável do app, sem precisar trocar cada elemento
+ * Toque que afunda levemente (e crescimento de 2% ao passar o mouse nos botões) em qualquer botão/cartão clicável do app, sem precisar trocar cada elemento
  * por `motion.*`: um único ouvinte no documento. Instalado uma vez em main.tsx.
  */
 const PRESSABLE = 'button, .btn, .tile, .dock a, .m-row, .pill-btn, [role="button"]';
@@ -81,7 +83,7 @@ export function installPressFeedback() {
   };
   const release = () => {
     if (!down) return;
-    animate(down, { scale: 1 }, BOUNCY);
+    animate(down, { scale: 1 }, PRESS);
     down = null;
   };
   const onDown = (e: PointerEvent) => {
@@ -89,28 +91,29 @@ export function installPressFeedback() {
     const el = find(e.target);
     if (!el) return;
     down = el;
-    animate(el, { scale: 0.9 }, PRESS);
+    animate(el, { scale: 0.96 }, PRESS);
   };
+  // passar o mouse: crescimento mínimo (2%) só em botões; linhas e cartões só mudam de cor
   const onOver = (e: PointerEvent) => {
     if (reduced() || e.pointerType !== 'mouse') return;
     const el = find(e.target);
-    if (el && el !== down && !el.matches('.tile, .m-row') && !el.contains(e.relatedTarget as Node)) animate(el, { scale: 1.06 }, BOUNCY);
+    if (el && el !== down && !el.matches('.tile, .m-row, .rt-row') && !el.contains(e.relatedTarget as Node)) animate(el, { scale: 1.02 }, PRESS);
   };
   const onOut = (e: PointerEvent) => {
     if (e.pointerType !== 'mouse') return;
     const el = find(e.target);
-    if (el && el !== down && !el.contains(e.relatedTarget as Node)) animate(el, { scale: 1 }, BOUNCY);
+    if (el && el !== down && !el.contains(e.relatedTarget as Node)) animate(el, { scale: 1 }, PRESS);
   };
   document.addEventListener('pointerdown', onDown);
-  document.addEventListener('pointerup', release);
-  document.addEventListener('pointercancel', release);
   document.addEventListener('pointerover', onOver);
   document.addEventListener('pointerout', onOut);
+  document.addEventListener('pointerup', release);
+  document.addEventListener('pointercancel', release);
   return () => {
+    document.removeEventListener('pointerover', onOver);
+    document.removeEventListener('pointerout', onOut);
     document.removeEventListener('pointerdown', onDown);
     document.removeEventListener('pointerup', release);
     document.removeEventListener('pointercancel', release);
-    document.removeEventListener('pointerover', onOver);
-    document.removeEventListener('pointerout', onOut);
   };
 }

@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ROUTE_STATUS_LABELS, type Route } from '@rotacerta/domain';
 import { useStore } from '../app/store';
 import { Icon } from '../app/icons';
 import { Item, Stagger } from '../app/motion';
-import { Empty, Header, OrderPill, RoutePill } from './ui';
+import { Empty, Header, OrderPill, RoutePill, Tabs } from './ui';
 
 type Filter = 'all' | Route['status'];
 const FILTERS: Filter[] = ['all', 'loading', 'released', 'active', 'finished'];
@@ -14,6 +14,12 @@ export function Romaneios() {
   const { data } = useStore();
   const [filter, setFilter] = useState<Filter>('all');
   const [selId, setSelId] = useState<number | null>(null);
+  // vindo da busca do topo (?romaneio=ID): mostra todos e seleciona o romaneio
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const id = Number(params.get('romaneio'));
+    if (id) { setFilter('all'); setSelId(id); setParams({}, { replace: true }); }
+  }, [params, setParams]);
   const routes = data.routes.slice().reverse().filter((r) => filter === 'all' || r.status === filter);
   const selected = routes.find((r) => r.id === selId) ?? routes[0];
 
@@ -28,13 +34,7 @@ export function Romaneios() {
       <Header title="Romaneios" subtitle="Uma referência única para carregar, conferir e entregar."
         actions={<button type="button" onClick={() => window.print()}><Icon name="list" size={18} />Imprimir</button>} />
 
-      <div className="chips">
-        {FILTERS.map((f) => (
-          <button key={f} type="button" className={filter === f ? 'chip on' : 'chip'} onClick={() => setFilter(f)}>
-            {f === 'all' ? 'Todos' : ROUTE_STATUS_LABELS[f]} ({data.routes.filter((r) => f === 'all' || r.status === f).length})
-          </button>
-        ))}
-      </div>
+      <Tabs value={filter} onChange={(v) => setFilter(v as typeof filter)} label="Situação dos romaneios" items={FILTERS.map((f) => ({ value: f, label: `${f === 'all' ? 'Todos' : ROUTE_STATUS_LABELS[f]} (${data.routes.filter((r) => f === 'all' || r.status === f).length})` }))} />
 
       {routes.length === 0 ? <Empty>Nenhum romaneio {filter === 'all' ? 'criado' : 'nesta situação'}.</Empty> : (
         <div className="rt-split">

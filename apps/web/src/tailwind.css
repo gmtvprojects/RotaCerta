@@ -3,10 +3,18 @@
  * Ordem das camadas: o CSS antigo entra em `components`, então qualquer utilitário do Tailwind
  * (ex.: `grid p-4`) ganha dele sem precisar de !important. As telas migram aos poucos.
  */
-@layer theme, base, components, utilities;
+@layer reset, theme, base, components, astryx-base, astryx-theme, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "./styles.css" layer(components);
 @import "./theme-rota.css" layer(components); /* estilo "Rota" no app inteiro (menos o login) */
+@import "@astryxdesign/core/reset.css";
+@import "@astryxdesign/core/astryx.css";
+@import "@astryxdesign/theme-neutral/theme.css";
+@import "@astryxdesign/theme-stone/theme.css";
+@import "@astryxdesign/theme-matcha/theme.css";
+@import "@astryxdesign/theme-butter/theme.css";
+@import "@astryxdesign/theme-chocolate/theme.css";
+@import "./theme-astryx.css" layer(components); /* aproxima as telas ainda não migradas dos tokens do Astryx */
 @import "tailwindcss/utilities.css" layer(utilities);
 
 /*
@@ -34,4 +42,10 @@
   --shadow-card: var(--shadow);
   --radius-card: 18px;
   --radius-modal: 20px;
+}
+
+/* Fonte única do app em qualquer paleta (fora de camada: vence os temas, que trazem fontes próprias) */
+[data-astryx-theme] {
+  --font-family-body: 'Figtree Variable', system-ui, sans-serif;
+  --font-family-heading: 'Figtree Variable', system-ui, sans-serif;
 }
